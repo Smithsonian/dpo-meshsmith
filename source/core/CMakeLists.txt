@@ -39,14 +39,16 @@ set_property(TARGET MeshSmithCore PROPERTY FOLDER "_libs")
 
 target_include_directories(MeshSmithCore BEFORE PRIVATE
     FlowGLTF
+	${Boost_INCLUDE_DIRS}
     ${Assimp_INCLUDE_DIR}
 #    ${FreeImage_INCLUDE_DIR}
 )
 
 target_link_libraries(MeshSmithCore
-    FlowGLTF
     debug ${Assimp_DEBUG_LIB}
 	optimized ${Assimp_RELEASE_LIB}
+	${Boost_LIBRARIES}
+    FlowGLTF
 #    ${FreeImage_LIB}
 )
 

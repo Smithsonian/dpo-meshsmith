@@ -31,7 +31,6 @@ target_include_directories(MeshSmith BEFORE PRIVATE
 #Qt5::Core
 
 target_link_libraries(MeshSmith
-    FlowGLTF
     MeshSmithCore
 )
 #Qt5::Core

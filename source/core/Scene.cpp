@@ -7,6 +7,7 @@
 
 #include "Scene.h"
 #include "Processor.h"
+#include "GLTFExporter.h"
 
 #include "core/json.h"
 
@@ -145,6 +146,16 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 	size_t dotPos = fileName.find_last_of(".");
 	string baseFileName = fileName.substr(0, dotPos);
 	string extension;
+
+	if (formatId == "gltfx") {
+		GLTFExporter exporter(_pImpl->pScene);
+		if (!exporter.exportGLTF(fileName)) {
+			_pImpl->lastError = exporter.lastError();
+			return false;
+		}
+
+		return true;
+	}
 
 	size_t formatCount = aiGetExportFormatCount();
 	for (size_t i = 0; i < formatCount; ++i) {

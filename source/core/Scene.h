@@ -5,8 +5,8 @@
  * @copyright (c) 2018 Frame Factory GmbH.
  */
  
-#ifndef _INTERMESH_ENGINE_SCENE_H
-#define _INTERMESH_ENGINE_SCENE_H
+#ifndef _MESHSMITH_SCENE_H
+#define _MESHSMITH_SCENE_H
 
 #include "library.h"
 #include <string>
@@ -57,4 +57,4 @@ namespace meshsmith
 	};
 }
 
-#endif // _INTERMESH_ENGINE_SCENE_H
+#endif // _MESHSMITH_SCENE_H

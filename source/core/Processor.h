@@ -5,8 +5,8 @@
 * @copyright (c) 2018 Frame Factory GmbH.
 */
 
-#ifndef _INTERMESH_ENGINE_PROCESSOR_H
-#define _INTERMESH_ENGINE_PROCESSOR_H
+#ifndef _MESHSMITH_PROCESSOR_H
+#define _MESHSMITH_PROCESSOR_H
 
 #include "library.h"
 
@@ -45,4 +45,4 @@ namespace meshsmith
 	};
 }
  
-#endif // _INTERMESH_ENGINE_PROCESSOR_H
+#endif // _MESHSMITH_PROCESSOR_H
