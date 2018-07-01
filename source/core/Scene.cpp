@@ -13,13 +13,14 @@
 
 #include <assimp/Importer.hpp>
 #include <assimp/Exporter.hpp>
+#include <assimp/SceneCombiner.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
 
 #include <iostream>
 
 using namespace meshsmith;
+using namespace Assimp;
 using namespace flow;
 using namespace std;
 
@@ -127,7 +128,7 @@ bool Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
 	}
 
 	_pImpl->importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
-	int processFlags = aiProcess_RemoveComponent;
+	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices;
 
 	_pImpl->pScene = _pImpl->importer.ReadFile(fileName, processFlags);
 
@@ -143,17 +144,40 @@ bool Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
 
 bool Scene::save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const
 {
+	bool verbose = _pImpl->verbose;
+
 	size_t dotPos = fileName.find_last_of(".");
 	string baseFileName = fileName.substr(0, dotPos);
 	string extension;
 
 	if (formatId == "gltfx") {
-		GLTFExporter exporter(_pImpl->pScene);
+		if (verbose) {
+			cout << "Export as custom glTF X" << endl;
+		}
+
+		aiScene* pSceneCopy = nullptr;
+		SceneCombiner::CopyScene(&pSceneCopy, _pImpl->pScene);
+
+		//JoinVerticesProcess proc;
+		//proc.Execute(pSceneCopy);
+
+
+		GLTFExporter exporter(pSceneCopy);
+		exporter.setVerbose(verbose);
 		if (!exporter.exportGLTF(fileName)) {
 			_pImpl->lastError = exporter.lastError();
+			if (verbose) {
+				cout << "Failed: " << exporter.lastError() << endl;
+			}
+			delete pSceneCopy;
 			return false;
 		}
 
+		if (verbose) {
+			cout << "Success";
+		}
+
+		delete pSceneCopy;
 		return true;
 	}
 
@@ -162,7 +186,7 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 		const aiExportFormatDesc* pDesc = aiGetExportFormatDescription(i);
 		if (formatId == pDesc->id) {
 			extension = pDesc->fileExtension;
-			if (_pImpl->verbose) {
+			if (verbose) {
 				cout << "Export format: " << pDesc->description << endl;
 			}
 		}
@@ -175,7 +199,7 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 
 	string outputFileName = baseFileName + "." + extension;
 
-	if (_pImpl->verbose) {
+	if (verbose) {
 		cout << "Output file: " << outputFileName << endl;
 	}
 
@@ -184,7 +208,7 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 	int exportFlags = 0;
 	
 	if (joinVertices) {
-		if (_pImpl->verbose) {
+		if (verbose) {
 			cout << "Join Identical Vertices" << endl;
 		}
 		exportFlags |= aiProcess_JoinIdenticalVertices;

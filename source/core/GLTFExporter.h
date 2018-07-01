@@ -25,6 +25,7 @@ namespace meshsmith
 		GLTFExporter(const aiScene* pScene);
 		virtual ~GLTFExporter();
 
+		void setVerbose(bool state);
 		void setDiffuseMapFileName(const std::string& fileName);
 		void setOcclusionMapFileName(const std::string& fileName);
 		void setNormalMapFileName(const std::string& fileName);
@@ -46,6 +47,8 @@ namespace meshsmith
 		bool setError(const std::string& message);
 
 	private:
+		bool _verbose;
+
 		const aiScene* _pScene;
 		std::string _diffuseMapFileName;
 		std::string _occlusionMapFileName;

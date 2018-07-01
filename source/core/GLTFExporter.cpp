@@ -21,9 +21,12 @@ using namespace meshsmith;
 using namespace flow;
 using namespace boost;
 using std::string;
+using std::cout;
+using std::endl;
 
 
 GLTFExporter::GLTFExporter(const aiScene* pScene) :
+	_verbose(false),
 	_pScene(pScene),
 	_exportNormals(true),
 	_exportUVs(true),
@@ -33,6 +36,11 @@ GLTFExporter::GLTFExporter(const aiScene* pScene) :
 
 GLTFExporter::~GLTFExporter()
 {
+}
+
+void GLTFExporter::setVerbose(bool state)
+{
+	_verbose = state;
 }
 
 void GLTFExporter::setDiffuseMapFileName(const string& fileName)
@@ -79,7 +87,7 @@ bool GLTFExporter::exportGLTF(const string& outputFileName)
 	filesystem::ofstream gltfStream(baseFileName + ".gltf");
 	gltfStream << _gltf.dump(2);
 
-	filesystem::ofstream binStream(baseFileName + ".bin");
+	filesystem::ofstream binStream(baseFileName + ".bin", std::ios_base::binary);
 	binStream.write(_bin.data(), _bin.size());
 
 	return true;
@@ -87,6 +95,10 @@ bool GLTFExporter::exportGLTF(const string& outputFileName)
 
 bool GLTFExporter::exportScene(const string& name)
 {
+	if (_verbose) {
+		cout << "GLTFExporter::exportScene - create buffer" << endl;
+	}
+
 	if (_pScene->mNumMeshes < 1) {
 		return setError("scene contains no meshes.");
 	}
@@ -103,41 +115,42 @@ bool GLTFExporter::exportScene(const string& name)
 	size_t numVertices = pMesh->mNumVertices;
 	size_t numIndices = pMesh->mNumFaces * 3;
 	size_t numComponents = 3 + (exportNormals ? 3 : 0) + (exportUVs ? 2 : 0);
-	size_t bufferSize = numVertices * sizeof(float) * numComponents;
+	size_t bufferSize = numVertices * sizeof(float) * numComponents + numIndices * sizeof(int);
 
 	_bin.resize(bufferSize);
 	
-	size_t positionsOffset = 0;
-	size_t normalsOffset = 0;
-	size_t uvsOffset = 0;
-	size_t indicesOffset = 0;
-	size_t totalSize = 0;
+	size_t normalsOffset = writePositions(pMesh, 0);
+	size_t uvsOffset = exportNormals ? writeNormals(pMesh, normalsOffset) : normalsOffset;
+	size_t indicesOffset = exportUVs ? writeUVs(pMesh, uvsOffset) : uvsOffset;
+	size_t totalSize = writeIndices(pMesh, indicesOffset);
 
-	normalsOffset = writePositions(pMesh, positionsOffset);
-	uvsOffset = exportNormals ? writeNormals(pMesh, normalsOffset) : normalsOffset;
-	indicesOffset = exportUVs ? writeUVs(pMesh, uvsOffset) : uvsOffset;
-	totalSize = writeIndices(pMesh, indicesOffset);
+	// writeIndices() returns 0 in case of an error
+	if (totalSize == 0) {
+		return false;
+	}
 
 	if (totalSize != bufferSize) {
 		return setError("buffer size mismatch");
 	}
 
-	// create glTF
-	GLTFAsset asset(name);
+	if (_verbose) {
+		cout << "GLTFExporter::exportScene - create glTF" << endl;
+	}
 
-	GLTFBuffer* pBuffer = asset.createBuffer(bufferSize);
-	pBuffer->setUri(name + ".bin");
-	GLTFBufferView* pVertexView = asset.createBufferView(pBuffer);
-	pVertexView->setTarget(GLTFBufferView::ARRAY_BUFFER);
-	pVertexView->setView(0, indicesOffset);
-	GLTFBufferView* pIndexView = asset.createBufferView(pBuffer);
-	pIndexView->setTarget(GLTFBufferView::ELEMENT_ARRAY_BUFFER);
-	pIndexView->setView(indicesOffset, bufferSize - indicesOffset);
+	// create glTF
+	GLTFAsset asset;
 
 	GLTFMesh* pAssetMesh = asset.createMesh();
 	GLTFPrimitive* pPrim = pAssetMesh->createPrimitive(GLTFPrimitive::TRIANGLES);
 
-	GLTFAccessor* pAccPositions = asset.createAccessor(pVertexView);
+	GLTFBuffer* pBuffer = asset.createBuffer(bufferSize);
+	pBuffer->setUri(name + ".bin");
+
+	GLTFBufferView* pVertexPositionView = asset.createBufferView(pBuffer);
+	pVertexPositionView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+	pVertexPositionView->setView(0, normalsOffset);
+
+	GLTFAccessor* pAccPositions = asset.createAccessor(pVertexPositionView);
 	pAccPositions->setAccess(numVertices, 0);
 	pAccPositions->setType(GLTFAccessor::VEC3, GLTFAccessor::FLOAT);
 	pAccPositions->setMin({ _min[0], _min[1], _min[2] });
@@ -145,17 +158,29 @@ bool GLTFExporter::exportScene(const string& name)
 	pPrim->addPositions(pAccPositions);
 
 	if (exportNormals) {
-		GLTFAccessor* pAccNormals = asset.createAccessor(pVertexView);
-		pAccNormals->setAccess(numVertices, normalsOffset);
+		GLTFBufferView* pVertexNormalsView = asset.createBufferView(pBuffer);
+		pVertexNormalsView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+		pVertexNormalsView->setView(normalsOffset, uvsOffset - normalsOffset);
+
+		GLTFAccessor* pAccNormals = asset.createAccessor(pVertexNormalsView);
+		pAccNormals->setAccess(numVertices, 0);
 		pAccNormals->setType(GLTFAccessor::VEC3, GLTFAccessor::FLOAT);
 		pPrim->addNormals(pAccNormals);
 	}
 	if (exportUVs) {
-		GLTFAccessor* pAccUVs = asset.createAccessor(pVertexView);
-		pAccUVs->setAccess(numVertices, uvsOffset);
+		GLTFBufferView* pVertexUVsView = asset.createBufferView(pBuffer);
+		pVertexUVsView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+		pVertexUVsView->setView(uvsOffset, indicesOffset - uvsOffset);
+
+		GLTFAccessor* pAccUVs = asset.createAccessor(pVertexUVsView);
+		pAccUVs->setAccess(numVertices, 0);
 		pAccUVs->setType(GLTFAccessor::VEC2, GLTFAccessor::FLOAT);
 		pPrim->addTexCoords(pAccUVs);
 	}
+
+	GLTFBufferView* pIndexView = asset.createBufferView(pBuffer);
+	pIndexView->setTarget(GLTFBufferView::ELEMENT_ARRAY_BUFFER);
+	pIndexView->setView(indicesOffset, bufferSize - indicesOffset);
 
 	GLTFAccessor* pAccIndices = asset.createAccessor(pIndexView);
 	pAccIndices->setAccess(numIndices, 0);
@@ -179,17 +204,21 @@ bool GLTFExporter::exportScene(const string& name)
 
 size_t GLTFExporter::writePositions(const aiMesh* pMesh, size_t offset)
 {
+	if (_verbose) {
+		cout << "GLTFExporter::writePositions" << endl;
+	}
+
 	_min[0] = _min[1] = _min[2] = std::numeric_limits<float>::max();
 	_max[0] = _max[1] = _max[2] = -_min[0];
 
 	size_t numVertices = pMesh->mNumVertices;
-	float* pSrc = (float*)pMesh->mVertices;
+	aiVector3D* pSrc = pMesh->mVertices;
 	float* pDst = (float*)(_bin.data() + offset);
 
 	for (size_t i = 0; i < numVertices; ++i) {
-		float x = pDst[i * 3] = pSrc[i * 3]; _min[0] = min(x, _min[0]); _max[0] = max(x, _max[0]);
-		float y = pDst[i*3+1] = pSrc[i*3+1]; _min[1] = min(y, _min[1]); _max[1] = max(y, _max[1]);
-		float z = pDst[i*3+2] = pSrc[i*3+2]; _min[2] = min(z, _min[2]); _max[2] = max(z, _max[2]);
+		float x = pDst[i*3  ] = pSrc[i].x; _min[0] = min(x, _min[0]); _max[0] = max(x, _max[0]);
+		float y = pDst[i*3+1] = pSrc[i].y; _min[1] = min(y, _min[1]); _max[1] = max(y, _max[1]);
+		float z = pDst[i*3+2] = pSrc[i].z; _min[2] = min(z, _min[2]); _max[2] = max(z, _max[2]);
 	}
 
 	return offset + numVertices * 3 * sizeof(float);
@@ -197,26 +226,36 @@ size_t GLTFExporter::writePositions(const aiMesh* pMesh, size_t offset)
 
 size_t GLTFExporter::writeNormals(const aiMesh* pMesh, size_t offset)
 {
-	size_t numFloats = pMesh->mNumVertices * 3;
-	float* pSrc = (float*)pMesh->mNormals;
-	float* pDst = (float*)(_bin.data() + offset);
-
-	for (size_t i = 0; i < numFloats; ++i) {
-		pDst[i] = pSrc[i];
+	if (_verbose) {
+		cout << "GLTFExporter::writeNormals" << endl;
 	}
 
-	return offset + numFloats * sizeof(float);
+	size_t numVertices = pMesh->mNumVertices;
+	aiVector3D* pSrc = pMesh->mNormals;
+	float* pDst = (float*)(_bin.data() + offset);
+
+	for (size_t i = 0; i < numVertices; ++i) {
+		pDst[i*3  ] = pSrc[i].x;
+		pDst[i*3+1] = pSrc[i].y;
+		pDst[i*3+2] = pSrc[i].z;
+	}
+
+	return offset + numVertices * 3 * sizeof(float);
 }
 
 size_t GLTFExporter::writeUVs(const aiMesh* pMesh, size_t offset)
 {
+	if (_verbose) {
+		cout << "GLTFExporter::writeUVs" << endl;
+	}
+
 	size_t numVertices = pMesh->mNumVertices;
-	float* pSrc = (float*)pMesh->mTextureCoords[0];
+	aiVector3D* pSrc = pMesh->mTextureCoords[0];
 	float* pDst = (float*)(_bin.data() + offset);
 
 	for (size_t i = 0; i < numVertices; ++i) {
-		pDst[i * 2] = pSrc[i * 3];
-		pDst[i * 2 + 1] = pSrc[i * 3 + 1];
+		pDst[i*2  ] = pSrc[i].x;
+		pDst[i*2+1] = pSrc[i].y;
 	}
 
 	return offset + numVertices * 2 * sizeof(float);
@@ -224,16 +263,36 @@ size_t GLTFExporter::writeUVs(const aiMesh* pMesh, size_t offset)
 
 size_t GLTFExporter::writeIndices(const aiMesh* pMesh, size_t offset)
 {
-	size_t numFaces = pMesh->mNumFaces;
+	if (_verbose) {
+		cout << "GLTFExporter::writeIndices" << endl;
+	}
+
+	uint32_t numVertices = pMesh->mNumVertices;
+	uint32_t numFaces = pMesh->mNumFaces;
 	aiFace* pFace = pMesh->mFaces;
 	uint32_t* pDst = (uint32_t*)(_bin.data() + offset);
 
 	for (size_t i = 0; i < numFaces; ++i) {
-		pDst[i * 3] = pFace[i].mIndices[0];
-		pDst[i * 3 + 1] = pFace[i].mIndices[1];
-		pDst[i * 3 + 2] = pFace[i].mIndices[2];
-	}
+		const aiFace& face = pFace[i];
 
+		if (face.mNumIndices != 3) {
+			setError("non-triangular face found");
+			return 0;
+		}
+
+		uint32_t i0 = face.mIndices[0];
+		uint32_t i1 = face.mIndices[1];
+		uint32_t i2 = face.mIndices[2];
+
+		if (i0 >= numVertices || i1 >= numVertices || i2 >= numVertices) {
+			setError("invalid vertex index found");
+			return 0;
+		}
+
+		pDst[i*3  ] = i0;
+		pDst[i*3+1] = i1;
+		pDst[i*3+2] = i2;
+	}
 	return offset + numFaces * 3 * sizeof(uint32_t);
 }
 
