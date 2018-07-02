@@ -141,50 +141,50 @@ bool GLTFExporter::exportScene(const string& name)
 	GLTFAsset asset;
 
 	GLTFMesh* pAssetMesh = asset.createMesh();
-	GLTFPrimitive* pPrim = pAssetMesh->createPrimitive(GLTFPrimitive::TRIANGLES);
+	GLTFPrimitive* pPrim = pAssetMesh->createPrimitive(GLTFPrimitiveMode::TRIANGLES);
 
 	GLTFBuffer* pBuffer = asset.createBuffer(bufferSize);
 	pBuffer->setUri(name + ".bin");
 
 	GLTFBufferView* pVertexPositionView = asset.createBufferView(pBuffer);
-	pVertexPositionView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+	pVertexPositionView->setTarget(GLTFBufferTarget::ARRAY_BUFFER);
 	pVertexPositionView->setView(0, normalsOffset);
 
 	GLTFAccessor* pAccPositions = asset.createAccessor(pVertexPositionView);
-	pAccPositions->setAccess(numVertices, 0);
-	pAccPositions->setType(GLTFAccessor::VEC3, GLTFAccessor::FLOAT);
+	pAccPositions->setRange(numVertices, 0);
+	pAccPositions->setType(GLTFAccessorType::VEC3, GLTFAccessorComponent::FLOAT);
 	pAccPositions->setMin({ _min[0], _min[1], _min[2] });
 	pAccPositions->setMax({ _max[0], _max[1], _max[2] });
 	pPrim->addPositions(pAccPositions);
 
 	if (exportNormals) {
 		GLTFBufferView* pVertexNormalsView = asset.createBufferView(pBuffer);
-		pVertexNormalsView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+		pVertexNormalsView->setTarget(GLTFBufferTarget::ARRAY_BUFFER);
 		pVertexNormalsView->setView(normalsOffset, uvsOffset - normalsOffset);
 
 		GLTFAccessor* pAccNormals = asset.createAccessor(pVertexNormalsView);
-		pAccNormals->setAccess(numVertices, 0);
-		pAccNormals->setType(GLTFAccessor::VEC3, GLTFAccessor::FLOAT);
+		pAccNormals->setRange(numVertices, 0);
+		pAccNormals->setType(GLTFAccessorType::VEC3, GLTFAccessorComponent::FLOAT);
 		pPrim->addNormals(pAccNormals);
 	}
 	if (exportUVs) {
 		GLTFBufferView* pVertexUVsView = asset.createBufferView(pBuffer);
-		pVertexUVsView->setTarget(GLTFBufferView::ARRAY_BUFFER);
+		pVertexUVsView->setTarget(GLTFBufferTarget::ARRAY_BUFFER);
 		pVertexUVsView->setView(uvsOffset, indicesOffset - uvsOffset);
 
 		GLTFAccessor* pAccUVs = asset.createAccessor(pVertexUVsView);
-		pAccUVs->setAccess(numVertices, 0);
-		pAccUVs->setType(GLTFAccessor::VEC2, GLTFAccessor::FLOAT);
+		pAccUVs->setRange(numVertices, 0);
+		pAccUVs->setType(GLTFAccessorType::VEC2, GLTFAccessorComponent::FLOAT);
 		pPrim->addTexCoords(pAccUVs);
 	}
 
 	GLTFBufferView* pIndexView = asset.createBufferView(pBuffer);
-	pIndexView->setTarget(GLTFBufferView::ELEMENT_ARRAY_BUFFER);
+	pIndexView->setTarget(GLTFBufferTarget::ELEMENT_ARRAY_BUFFER);
 	pIndexView->setView(indicesOffset, bufferSize - indicesOffset);
 
 	GLTFAccessor* pAccIndices = asset.createAccessor(pIndexView);
-	pAccIndices->setAccess(numIndices, 0);
-	pAccIndices->setType(GLTFAccessor::SCALAR, GLTFAccessor::UNSIGNED_INT);
+	pAccIndices->setRange(numIndices, 0);
+	pAccIndices->setType(GLTFAccessorType::SCALAR, GLTFAccessorComponent::UNSIGNED_INT);
 	pPrim->setIndices(pAccIndices);
 
 	GLTFScene* pScene = asset.createScene(name);
