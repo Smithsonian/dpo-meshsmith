@@ -138,10 +138,10 @@ bool GLTFExporter::exportScene(const string& name)
 	}
 
 	// create glTF
-	GLTFAsset asset;
+	GLTFObject asset;
 
 	GLTFMesh* pAssetMesh = asset.createMesh();
-	GLTFPrimitive* pPrim = pAssetMesh->createPrimitive(GLTFPrimitiveMode::TRIANGLES);
+	GLTFPrimitive& prim = pAssetMesh->createPrimitive(GLTFPrimitiveMode::TRIANGLES);
 
 	GLTFBuffer* pBuffer = asset.createBuffer(bufferSize);
 	pBuffer->setUri(name + ".bin");
@@ -155,7 +155,7 @@ bool GLTFExporter::exportScene(const string& name)
 	pAccPositions->setType(GLTFAccessorType::VEC3, GLTFAccessorComponent::FLOAT);
 	pAccPositions->setMin({ _min[0], _min[1], _min[2] });
 	pAccPositions->setMax({ _max[0], _max[1], _max[2] });
-	pPrim->addPositions(pAccPositions);
+	prim.addPositions(pAccPositions);
 
 	if (exportNormals) {
 		GLTFBufferView* pVertexNormalsView = asset.createBufferView(pBuffer);
@@ -165,7 +165,7 @@ bool GLTFExporter::exportScene(const string& name)
 		GLTFAccessor* pAccNormals = asset.createAccessor(pVertexNormalsView);
 		pAccNormals->setRange(numVertices, 0);
 		pAccNormals->setType(GLTFAccessorType::VEC3, GLTFAccessorComponent::FLOAT);
-		pPrim->addNormals(pAccNormals);
+		prim.addNormals(pAccNormals);
 	}
 	if (exportUVs) {
 		GLTFBufferView* pVertexUVsView = asset.createBufferView(pBuffer);
@@ -175,7 +175,7 @@ bool GLTFExporter::exportScene(const string& name)
 		GLTFAccessor* pAccUVs = asset.createAccessor(pVertexUVsView);
 		pAccUVs->setRange(numVertices, 0);
 		pAccUVs->setType(GLTFAccessorType::VEC2, GLTFAccessorComponent::FLOAT);
-		pPrim->addTexCoords(pAccUVs);
+		prim.addTexCoords(pAccUVs);
 	}
 
 	GLTFBufferView* pIndexView = asset.createBufferView(pBuffer);
@@ -185,7 +185,7 @@ bool GLTFExporter::exportScene(const string& name)
 	GLTFAccessor* pAccIndices = asset.createAccessor(pIndexView);
 	pAccIndices->setRange(numIndices, 0);
 	pAccIndices->setType(GLTFAccessorType::SCALAR, GLTFAccessorComponent::UNSIGNED_INT);
-	pPrim->setIndices(pAccIndices);
+	prim.setIndices(pAccIndices);
 
 	GLTFScene* pScene = asset.createScene(name);
 	GLTFMeshNode* pNode = asset.createMeshNode(pAssetMesh, name);
