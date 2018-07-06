@@ -37,13 +37,6 @@ namespace meshsmith
 		const std::string& lastError() const { return _lastError;  }
 
 	protected:
-		bool exportScene(const std::string& name);
-		
-		size_t writePositions(const aiMesh* pMesh, size_t offset);
-		size_t writeNormals(const aiMesh* pMesh, size_t offset);
-		size_t writeUVs(const aiMesh* pMesh, size_t offset);
-		size_t writeIndices(const aiMesh* pMesh, size_t offset);
-
 		bool setError(const std::string& message);
 
 	private:
@@ -53,16 +46,10 @@ namespace meshsmith
 		std::string _diffuseMapFileName;
 		std::string _occlusionMapFileName;
 		std::string _normalMapFileName;
+
 		bool _exportNormals;
 		bool _exportUVs;
 		bool _enableCompression;
-
-		float _min[3];
-		float _max[3];
-
-		flow::json _gltf;
-		std::vector<char> _bin;
-		std::vector<char> _glb;
 
 		std::string _lastError;
 	};

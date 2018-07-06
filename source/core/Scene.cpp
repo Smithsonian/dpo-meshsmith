@@ -128,7 +128,7 @@ bool Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
 	}
 
 	_pImpl->importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
-	int processFlags = aiProcess_RemoveComponent /* | aiProcess_JoinIdenticalVertices */;
+	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices;
 
 	_pImpl->pScene = _pImpl->importer.ReadFile(fileName, processFlags);
 
