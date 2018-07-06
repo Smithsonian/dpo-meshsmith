@@ -112,6 +112,10 @@ bool GLTFExporter::exportScene(const string& name)
 	bool exportNormals = pMesh->HasNormals() && _exportNormals;
 	bool exportUVs = pMesh->HasTextureCoords(0) && _exportUVs;
 
+	GLTFObject asset;
+	asset.createB
+
+
 	size_t numVertices = pMesh->mNumVertices;
 	size_t numIndices = pMesh->mNumFaces * 3;
 	size_t numComponents = 3 + (exportNormals ? 3 : 0) + (exportUVs ? 2 : 0);
