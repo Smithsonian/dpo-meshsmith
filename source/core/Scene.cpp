@@ -22,27 +22,15 @@
 using namespace meshsmith;
 using namespace Assimp;
 using namespace flow;
-using namespace std;
 
-namespace meshsmith
+using std::string;
+using std::cout;
+using std::endl;
+
+
+json Scene::getJsonExportFormats()
 {
-	struct _sceneImpl_t
-	{
-		Assimp::Importer importer;
-		Assimp::Exporter exporter;
-
-		const aiScene* pScene;
-		std::string fileName;
-		std::string lastError;
-		bool verbose;
-
-		uint32_t refCount;
-	};
-}
-
-string Scene::getJsonExportFormats()
-{
-	json jsonFormats = {
+	json result = {
 		{ "type", "list" },
 		{ "status", "ok" }
 	};
@@ -59,54 +47,46 @@ string Scene::getJsonExportFormats()
 		});
 	}
 
-	jsonFormats["list"] = jsonList;
-	return jsonFormats.dump(4);
+	result["list"] = jsonList;
+	return result;
 }
 
-string Scene::getJsonError(const std::string& message)
+json Scene::getJsonStatus(const std::string& error /* = std::string{} */)
 {
-	json jsonStatus = {
+	json result = {
 		{ "type", "status" },
-		{ "status", "error" },
-		{ "error", message }
+		{ "status", error.empty() ? "ok" : "error" },
+		{ "error", error }
 	};
 
-	return jsonStatus.dump(4);
+	return result;
 }
 
-Scene::Scene()
+Scene::Scene() :
+	_pImporter(new Assimp::Importer()),
+	_pExporter(new Assimp::Exporter()),
+	_pScene(nullptr),
+	_verbose(false)
 {
-	_createRef();
-}
-
-Scene::Scene(const Scene& other)
-{
-	_pImpl = other._pImpl;
-	_addRef();
 }
 
 Scene::~Scene()
 {
-	_releaseRef();
+	F_SAFE_DELETE(_pImporter);
+	F_SAFE_DELETE(_pExporter);
 }
 
-Scene& Scene::operator=(const Scene& other)
+void Scene::setGLTFOptions(const GLTFExporterOptions& options)
 {
-	if (this == &other)
-		return *this;
-
-	_releaseRef();
-	_pImpl = other._pImpl;
-	_addRef();
-	return *this;
+	_gltfExporterOptions = options;
 }
 
 void Scene::setVerbose(bool enabled)
 {
-	_pImpl->verbose = enabled;
+	_verbose = enabled;
 }
 
-bool Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
+Result Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
 {
 	int removeFlags
 		= aiComponent_MATERIALS | aiComponent_TEXTURES | aiComponent_LIGHTS
@@ -114,71 +94,57 @@ bool Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
 		| aiComponent_COLORS;
 
 	if (stripNormals) {
-		if (_pImpl->verbose) {
+		if (_verbose) {
 			cout << "Strip normals/tangents" << endl;
 		}
 		removeFlags |= aiComponent_NORMALS | aiComponent_TANGENTS_AND_BITANGENTS;
 	}
 
 	if (stripUVs) {
-		if (_pImpl->verbose) {
+		if (_verbose) {
 			cout << "Strip UVs" << endl;
 		}
 		removeFlags |= aiComponent_TEXCOORDS;
 	}
 
-	_pImpl->importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
+	_pImporter->SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices;
 
-	_pImpl->pScene = _pImpl->importer.ReadFile(fileName, processFlags);
+	_pScene = _pImporter->ReadFile(fileName, processFlags);
 
-	if (!_pImpl->pScene) {
-		std::string errorString = _pImpl->importer.GetErrorString();
-		_pImpl->lastError = "failed to read: " + fileName + ", reason: " + errorString;
-		return false;
+	if (!_pScene) {
+		std::string errorString = _pImporter->GetErrorString();
+		return Result::error("failed to read: " + fileName + ", reason: " + errorString);
 	}
 
-	_pImpl->fileName = fileName;
-	return true;
+	_fileName = fileName;
+	return Result::ok();
 }
 
-bool Scene::save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const
+Result Scene::save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const
 {
-	bool verbose = _pImpl->verbose;
-
 	size_t dotPos = fileName.find_last_of(".");
 	string baseFileName = fileName.substr(0, dotPos);
 	string extension;
 
-	if (formatId == "gltfx") {
-		if (verbose) {
-			cout << "Export as custom glTF X" << endl;
+	if (formatId == "gltfx" || formatId == "glbx") {
+		if (_verbose) {
+			cout << "Exporting using custom glTF exporter." << endl;
 		}
 
-		aiScene* pSceneCopy = nullptr;
-		SceneCombiner::CopyScene(&pSceneCopy, _pImpl->pScene);
+		GLTFExporterOptions options(_gltfExporterOptions);
+		options.verbose = _verbose;
+		options.writeGLB = (formatId == "glbx");
 
-		//JoinVerticesProcess proc;
-		//proc.Execute(pSceneCopy);
+		GLTFExporter exporter(_pScene);
+		exporter.setOptions(options);
 
-
-		GLTFExporter exporter(pSceneCopy);
-		exporter.setVerbose(verbose);
-		if (!exporter.exportGLTF(fileName)) {
-			_pImpl->lastError = exporter.lastError();
-			if (verbose) {
-				cout << "Failed: " << exporter.lastError() << endl;
-			}
-			delete pSceneCopy;
-			return false;
+		Result result = exporter.exportScene(fileName);
+		if (result.isError()) {
+			return result;
 		}
 
-		if (verbose) {
-			cout << "Success";
-		}
-
-		delete pSceneCopy;
-		return true;
+		return Result::ok();
 	}
 
 	size_t formatCount = aiGetExportFormatCount();
@@ -186,20 +152,19 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 		const aiExportFormatDesc* pDesc = aiGetExportFormatDescription(i);
 		if (formatId == pDesc->id) {
 			extension = pDesc->fileExtension;
-			if (verbose) {
+			if (_verbose) {
 				cout << "Export format: " << pDesc->description << endl;
 			}
 		}
 	}
 
 	if (extension.empty()) {
-		_pImpl->lastError = "invalid output format id: " + formatId;
-		return false;
+		return Result::error("invalid output format id: " + formatId);
 	}
 
 	string outputFileName = baseFileName + "." + extension;
 
-	if (verbose) {
+	if (_verbose) {
 		cout << "Output file: " << outputFileName << endl;
 	}
 
@@ -208,51 +173,50 @@ bool Scene::save(const std::string& fileName, const std::string& formatId, bool 
 	int exportFlags = 0;
 	
 	if (joinVertices) {
-		if (verbose) {
+		if (_verbose) {
 			cout << "Join Identical Vertices" << endl;
 		}
 		exportFlags |= aiProcess_JoinIdenticalVertices;
 	}
 
-	aiReturn result = exporter.Export(_pImpl->pScene, formatId,
+	aiReturn result = exporter.Export(_pScene, formatId,
 		outputFileName, exportFlags, &exportProps);
 
 	if (result != aiReturn::aiReturn_SUCCESS) {
 		std::string errorString = exporter.GetErrorString();
-		_pImpl->lastError = "failed to write: " + outputFileName + ", reason: " + errorString;
-		return false;
+		return Result::error("failed to write: " + outputFileName + ", reason: " + errorString);
 	}
 
-	return true;
+	return Result::ok();
 }
 
 void Scene::swizzle(const std::string& order)
 {
-	if (_pImpl->verbose) {
+	if (_verbose) {
 		cout << "Swizzle " << order << endl;
 	}
 
-	Processor::swizzle(_pImpl->pScene, order);
+	Processor::swizzle(_pScene, order);
 }
 
 void Scene::center()
 {
-	if (_pImpl->verbose) {
-		Vector3f center = Processor::calculateBoundingBox(_pImpl->pScene).center();
+	if (_verbose) {
+		Vector3f center = Processor::calculateBoundingBox(_pScene).center();
 		cout << "Center " << center << endl;
 	}
 
-	Processor::center(_pImpl->pScene);
+	Processor::center(_pScene);
 }
 
 void Scene::scale(float factor)
 {
-	Processor::scale(_pImpl->pScene, factor);
+	Processor::scale(_pScene, factor);
 }
 
 string Scene::getJsonReport() const
 {
-	const aiScene* pScene = _pImpl->pScene;
+	const aiScene* pScene = _pScene;
 
 	json jsonReport = {
 		{ "type", "report" },
@@ -302,24 +266,10 @@ string Scene::getJsonReport() const
 	return jsonReport.dump(4);
 }
 
-string Scene::getJsonStatus() const
-{
-	string lastError = _pImpl->lastError;
-	string status = lastError.empty() ? "ok" : "error";
-
-	json jsonStatus = {
-		{ "type", "status" },
-		{ "status", status },
-		{ "error", lastError }
-	};
-
-	return jsonStatus.dump(4);
-}
-
 void Scene::dump() const
 {
-	cout << "File: " << _pImpl->fileName << endl;
-	const aiScene* pScene = _pImpl->pScene;
+	cout << "File: " << _fileName << endl;
+	const aiScene* pScene = _pScene;
 	cout << "  Meshes:     " << pScene->mNumMeshes << endl;
 	cout << "  Materials:  " << pScene->mNumMaterials << endl;
 	cout << "  Textures:   " << pScene->mNumTextures << endl;
@@ -350,39 +300,5 @@ void Scene::dump() const
 
 bool Scene::isValid() const
 {
-	return _pImpl->pScene != nullptr;
-}
-
-bool Scene::hasError() const
-{
-	return !_pImpl->lastError.empty();
-}
-
-const std::string& Scene::getLastError() const
-{
-	return _pImpl->lastError;
-}
-
-void Scene::_createRef()
-{
-	_pImpl = new _sceneImpl_t();
-	_pImpl->refCount = 1;
-}
-
-void Scene::_addRef()
-{
-	if (_pImpl)
-		_pImpl->refCount++;
-}
-
-void Scene::_releaseRef()
-{
-	if (_pImpl) {
-		_pImpl->refCount--;
-		if (_pImpl->refCount == 0) {
-			delete _pImpl;
-		}
-
-		_pImpl = nullptr;
-	}
+	return _pScene != nullptr;
 }

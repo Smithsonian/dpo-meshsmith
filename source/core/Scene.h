@@ -9,31 +9,42 @@
 #define _MESHSMITH_SCENE_H
 
 #include "library.h"
+
+#include "GLTFExporter.h"
+#include "core/ResultT.h"
+
 #include <string>
 
 struct aiMesh;
+struct aiScene;
+
+
+namespace Assimp
+{
+	class Importer;
+	class Exporter;
+}
 
 namespace meshsmith
 {
-	struct _sceneImpl_t;
-
 	class INTERMESH_ENGINE_EXPORT Scene
 	{
 	public:
-		static std::string getJsonExportFormats();
-		static std::string getJsonError(const std::string& message);
+		static flow::json getJsonExportFormats();
+		static flow::json getJsonStatus(const std::string& error = std::string{});
 
-	public:
 		Scene();
-		Scene(const Scene& other);
 		~Scene();
 
-		Scene& operator=(const Scene& other);
+		Scene(const Scene& other) = delete;
+		Scene& operator=(const Scene& other) = delete;
 
 	public:
+		void setGLTFOptions(const GLTFExporterOptions& options);
 		void setVerbose(bool enabled);
-		bool load(const std::string& fileName, bool stripNormals, bool stripUVs);
-		bool save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const;
+
+		flow::Result load(const std::string& fileName, bool stripNormals, bool stripUVs);
+		flow::Result save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const;
 
 		void swizzle(const std::string& order);
 		void center();
@@ -41,19 +52,21 @@ namespace meshsmith
 
 		void dump() const;
 		bool isValid() const;
-		bool hasError() const;
-		const std::string& getLastError() const;
+
 		std::string getJsonReport() const;
-		std::string getJsonStatus() const;
 
 	private:
 		void _dumpMesh(const aiMesh* pMesh) const;
 
-		void _createRef();
-		void _addRef();
-		void _releaseRef();
+		Assimp::Importer* _pImporter;
+		Assimp::Exporter* _pExporter;
 
-		_sceneImpl_t* _pImpl;
+		const aiScene* _pScene;
+		std::string _fileName;
+
+		GLTFExporterOptions _gltfExporterOptions;
+
+		bool _verbose;
 	};
 }
 

@@ -9,6 +9,8 @@
 #define _MESHSMITH_GLTFEXPORTER_H
  
 #include "library.h"
+
+#include "core/ResultT.h"
 #include "core/json.h"
 
 #include <vector>
@@ -19,39 +21,42 @@ struct aiScene;
 
 namespace meshsmith
 {
+	struct GLTFExporterOptions
+	{
+		GLTFExporterOptions() :
+			embedMaps(false),
+			useCompression(false),
+			exportNormals(true),
+			exportTexCoords(true),
+			writeGLB(false),
+			verbose(false)
+		{
+		}
+
+		bool embedMaps;
+		bool useCompression;
+		bool exportNormals;
+		bool exportTexCoords;
+		bool writeGLB;
+		bool verbose;
+
+		std::string diffuseMapFile;
+		std::string occlusionMapFile;
+		std::string normalMapFile;
+	};
+
 	class GLTFExporter
 	{
 	public:
 		GLTFExporter(const aiScene* pScene);
-		virtual ~GLTFExporter();
+		virtual ~GLTFExporter() { }
 
-		void setVerbose(bool state);
-		void setDiffuseMapFileName(const std::string& fileName);
-		void setOcclusionMapFileName(const std::string& fileName);
-		void setNormalMapFileName(const std::string& fileName);
-		void enableCompression(bool enable);
-
-		bool exportGLTF(const std::string& outputFileName);
-		bool exportGLB(const std::string& outputFileName);
-
-		const std::string& lastError() const { return _lastError;  }
-
-	protected:
-		bool setError(const std::string& message);
+		void setOptions(const GLTFExporterOptions& options);
+		flow::Result exportScene(const std::string& outputFileName);
 
 	private:
-		bool _verbose;
-
+		GLTFExporterOptions _options;
 		const aiScene* _pScene;
-		std::string _diffuseMapFileName;
-		std::string _occlusionMapFileName;
-		std::string _normalMapFileName;
-
-		bool _exportNormals;
-		bool _exportUVs;
-		bool _enableCompression;
-
-		std::string _lastError;
 	};
 }
  

@@ -19,8 +19,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 # Output directories
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/lib/debug)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/lib/release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/bin/debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/bin/release)
 
 # Append "d" to all debug libraries
 set(CMAKE_DEBUG_POSTFIX "d")
@@ -42,7 +44,7 @@ endif()
 # 3RD PARTY LIBRARIES
 
 set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_DEBUG_RUNTIME OFF)
+set(Boost_USE_DEBUG_RUNTIME ON)
 find_package(Boost REQUIRED filesystem)
 message(STATUS "Boost include directories: " ${Boost_INCLUDE_DIRS})
 message(STATUS "Boost library directories: " ${Boost_LIBRARY_DIRS})
