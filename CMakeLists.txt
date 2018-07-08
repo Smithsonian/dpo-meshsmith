@@ -55,7 +55,7 @@ message(STATUS "Boost library directories: " ${Boost_LIBRARY_DIRS})
 # Add base include path for all libraries
 #include_directories (${PROJECT_SOURCE_DIR}/source)
 
-add_subdirectory(../flow-libs ${PROJECT_SOURCE_DIR}/libs/flow-lib)
+add_subdirectory(../flow-libs ${PROJECT_SOURCE_DIR}/vendor/flow-lib)
 include_directories(../flow-libs/source)
 
 add_subdirectory(source/core)

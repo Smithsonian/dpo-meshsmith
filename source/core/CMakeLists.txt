@@ -16,12 +16,12 @@ source_group("All Files" FILES ${AllFiles})
 # ------------------------------------------------------------------------------
 # 3RD PARTY LIBRARIES
 
-set(Assimp_DIR "${PROJECT_SOURCE_DIR}/libs/assimp")
+set(Assimp_DIR "${PROJECT_SOURCE_DIR}/vendor/assimp")
 set(Assimp_INCLUDE_DIR "${Assimp_DIR}/include")
-set(Assimp_DEBUG_LIB "${Assimp_DIR}/bin/Debug/assimp-vc140-mt.lib")
-set(Assimp_RELEASE_LIB "${Assimp_DIR}/bin/Release/assimp-vc140-mt.lib")
-set(Assimp_DEBUG_DLL "${Assimp_DIR}/bin/Debug/assimp-vc140-mt.dll")
-set(Assimp_RELEASE_DLL "${Assimp_DIR}/bin/Release/assimp-vc140-mt.dll")
+set(Assimp_DEBUG_LIB "${Assimp_DIR}/lib/debug/assimp-vc140-mt.lib")
+set(Assimp_RELEASE_LIB "${Assimp_DIR}/lib/release/assimp-vc140-mt.lib")
+set(Assimp_DEBUG_DLL "${Assimp_DIR}/lib/debug/assimp-vc140-mt.dll")
+set(Assimp_RELEASE_DLL "${Assimp_DIR}/lib/release/assimp-vc140-mt.dll")
 message("Assimp IncludeDir: " ${Assimp_INCLUDE_DIR})
 
 #set(FreeImage_INCLUDE_DIR "${FreeImage_DIR}")
@@ -61,7 +61,12 @@ target_link_libraries(MeshSmithCore
 #    DESTINATION ${CMAKE_SOURCE_DIR}/include/IntermeshEngine
 #)
 
-#install(
-#    FILES  ${Assimp_RELEASE_DLL} ${FreeImage_DLL}
-#    DESTINATION ${CMAKE_SOURCE_DIR}/bin
-#)
+install(
+    FILES  ${Assimp_DEBUG_DLL}
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/debug
+)
+
+install(
+    FILES  ${Assimp_RELEASE_DLL}
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/release
+)
