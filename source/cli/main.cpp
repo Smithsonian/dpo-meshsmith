@@ -86,7 +86,7 @@ int main(int argc, char** ppArgv)
 			exit(1);
 		}
 
-		GLTFExporterOptions options;
+		GLTFExporterLegacyOptions options;
 		options.embedMaps = (parsed.count("embedmaps") != 0);
 		options.useCompression = (parsed.count("draco") != 0);
 		options.diffuseMapFile = parsed.count("diffusemap") ? parsed["diffusemap"].as<std::string>() : "";

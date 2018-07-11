@@ -7,7 +7,7 @@
 
 #include "Scene.h"
 #include "Processor.h"
-#include "GLTFExporter.h"
+#include "GLTFExporterLegacy.h"
 
 #include "core/json.h"
 
@@ -76,7 +76,7 @@ Scene::~Scene()
 	F_SAFE_DELETE(_pExporter);
 }
 
-void Scene::setGLTFOptions(const GLTFExporterOptions& options)
+void Scene::setGLTFOptions(const GLTFExporterLegacyOptions& options)
 {
 	_gltfExporterOptions = options;
 }
@@ -132,11 +132,11 @@ Result Scene::save(const std::string& fileName, const std::string& formatId, boo
 			cout << "Exporting using custom glTF exporter." << endl;
 		}
 
-		GLTFExporterOptions options(_gltfExporterOptions);
+		GLTFExporterLegacyOptions options(_gltfExporterOptions);
 		options.verbose = _verbose;
 		options.writeGLB = (formatId == "glbx");
 
-		GLTFExporter exporter(_pScene);
+		GLTFExporterLegacy exporter(_pScene);
 		exporter.setOptions(options);
 
 		Result result = exporter.exportScene(fileName);

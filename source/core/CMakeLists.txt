@@ -30,6 +30,13 @@ message("Assimp IncludeDir: " ${Assimp_INCLUDE_DIR})
 #message("FreeImage Library: " ${FreeImage_LIB})
 #message("FreeImage IncludeDir: " ${FreeImage_INCLUDE_DIR})
 
+# Google Draco Mesh Compression
+set(Draco_DIR "${PROJECT_SOURCE_DIR}/vendor/draco")
+set(Draco_INCLUDE_DIR "${Draco_DIR}/include")
+set(Draco_LIB_DEBUG "${Draco_DIR}/lib/Debug/draco.lib")
+set(Draco_LIB_RELEASE "${Draco_DIR}/lib/Release/draco.lib")
+message("Draco Directory: " ${Draco_DIR})
+
 # ------------------------------------------------------------------------------
 # BUILD TARGET
 
@@ -41,14 +48,17 @@ target_include_directories(MeshSmithCore BEFORE PRIVATE
     FlowGLTF
 	${Boost_INCLUDE_DIRS}
     ${Assimp_INCLUDE_DIR}
+	${Draco_INCLUDE_DIR}
 #    ${FreeImage_INCLUDE_DIR}
 )
 
 target_link_libraries(MeshSmithCore
+	FlowGLTF
     debug ${Assimp_DEBUG_LIB}
 	optimized ${Assimp_RELEASE_LIB}
 	${Boost_LIBRARIES}
-    FlowGLTF
+    optimized ${Draco_LIB_RELEASE}
+	debug ${Draco_LIB_DEBUG}
 #    ${FreeImage_LIB}
 )
 

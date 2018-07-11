@@ -16,22 +16,23 @@
 #include <assimp/scene.h>
 #include <assimp/mesh.h>
 
-#include <boost/filesystem.hpp>
+#include "draco/mesh/mesh.h"
+#include "draco/compression/encode.h"
+#include "draco/compression/decode.h"
 
-#include <limits>
-#include <iostream>
+#include <boost/filesystem.hpp>
 
 using namespace meshsmith;
 using namespace flow;
 using namespace boost;
+
+using draco::GeometryAttribute;
 using std::string;
-using std::cout;
-using std::endl;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-GLTFMimeType _mimeTypeFromExtension(const std::string& filePath)
+static GLTFMimeType _mimeTypeFromExtension(const std::string& filePath)
 {
 	filesystem::path fp(filePath);
 	string ext = fp.extension().string();
@@ -45,9 +46,89 @@ GLTFMimeType _mimeTypeFromExtension(const std::string& filePath)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-GLTFExporter::GLTFExporter(const aiScene* pScene) :
-	_pScene(pScene)
+GLTFExporter::GLTFExporter()
 {
+}
+
+GLTFExporter::~GLTFExporter()
+{
+}
+
+Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& fileName)
+{
+	uint32_t numMeshes = pAiScene->mNumMeshes;
+	if (numMeshes < 1) {
+		return Result::error("scene contains no meshes");
+	}
+
+	// for now, export first mesh
+	GLTFAsset asset;
+	GLTFBuffer* pBuffer = asset.createBuffer();
+
+	auto result = exportMesh(pAiScene, 0, asset, pBuffer, _createDefaultMaterial(asset, pBuffer));
+	if (result.isError()) {
+		return result;
+	}
+
+	GLTFScene* pScene = asset.createScene();
+	GLTFMeshNode* pNode = asset.createMeshNode(result.value());
+	Matrix4f matRotation;
+	matRotation.makeRotationYPR(0, Math::deg2rad(-90.0f), 0);
+	pNode->setMatrix(matRotation);
+	pScene->addNode(pNode);
+	asset.setMainScene(pScene);
+
+	// TODO: Implement
+
+	return Result::ok();
+}
+
+ResultT<GLTFMesh*> GLTFExporter::exportMesh(
+	const aiScene* pAiScene, size_t meshIndex, GLTFAsset& asset, GLTFBuffer* pBuffer, GLTFMaterial* pDefaultMaterial)
+{
+	const aiMesh* pAiMesh = pAiScene->mMeshes[meshIndex];
+
+	if (!pAiMesh->HasPositions()) {
+		return Result::error(string("mesh contains no positions: ") + pAiMesh->mName.C_Str());
+	}
+
+	GLTFMesh* pMesh = asset.createMesh();
+	GLTFPrimitive& primitive = pMesh->createPrimitive(GLTFPrimitiveMode::TRIANGLES);
+	size_t numVertices = pAiMesh->mNumVertices;
+
+	if (_options.useCompression) {
+		draco::EncoderBuffer encoderBuffer;
+		Result result = _dracoCompressMesh(pAiMesh, &encoderBuffer);
+		if (result.isError()) {
+			return result;
+		}
+
+		// TODO: Finish
+	}
+	else {
+		auto pAccPosition = asset.createAccessor<float>(GLTFAccessorType::VEC3);
+		pAccPosition->addVertexData(pBuffer, (float*)(pAiMesh->mVertices), numVertices);
+		pAccPosition->updateBounds();
+		primitive.addPositions(pAccPosition);
+
+		if (pAiMesh->HasNormals() && _options.exportNormals) {
+			auto pAccNormals = asset.createAccessor<float>(GLTFAccessorType::VEC3);
+			pAccNormals->addVertexData(pBuffer, (float*)(pAiMesh->mNormals), numVertices);
+			primitive.addNormals(pAccNormals);
+		}
+
+		if (pAiMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+			_exportTexCoords(pAiMesh, asset, primitive, pBuffer, 0);
+		}
+		if (pAiMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+			_exportTexCoords(pAiMesh, asset, primitive, pBuffer, 1);
+		}
+	}
+
+	GLTFMaterial* pMaterial = _exportMaterial(pAiScene, meshIndex, asset, pBuffer, pDefaultMaterial);
+	primitive.setMaterial(pMaterial);
+
+	return ResultT<GLTFMesh*>(pMesh);
 }
 
 void GLTFExporter::setOptions(const GLTFExporterOptions& options)
@@ -55,143 +136,233 @@ void GLTFExporter::setOptions(const GLTFExporterOptions& options)
 	_options = options;
 }
 
-Result GLTFExporter::exportScene(const string& outputFileName)
+void GLTFExporter::_exportTexCoords(
+	const aiMesh* pAiMesh, GLTFAsset& asset, GLTFPrimitive& primitive, GLTFBuffer* pBuffer, int channel)
 {
-	filesystem::path outputFilePath(outputFileName);
-	string baseFileName = outputFilePath.stem().string();
+	size_t numVertices = pAiMesh->mNumVertices;
+	size_t numComponents = pAiMesh->mNumUVComponents[channel];
+	GLTFAccessorT<float>* pAccUVs = nullptr;
 
-	aiMesh* pMesh = _pScene->mMeshes[0];
-
-	if (!pMesh->HasPositions()) {
-		return Result::error("mesh contains no positions");
-	}
-
-	bool exportNormals = pMesh->HasNormals() && _options.exportNormals;
-	bool exportUVs = pMesh->HasTextureCoords(0) && _options.exportTexCoords;
-
-	size_t numVertices = pMesh->mNumVertices;
-	size_t numIndices = pMesh->mNumFaces * 3;
-	size_t numFaces = pMesh->mNumFaces;
-	
-	// GLTF MESH DATA
-
-	GLTFAsset gltf;
-
-	GLTFMesh* pAssetMesh = gltf.createMesh();
-	GLTFPrimitive& prim = pAssetMesh->createPrimitive(GLTFPrimitiveMode::TRIANGLES);
-
-	GLTFScene* pScene = gltf.createScene();
-	GLTFMeshNode* pNode = gltf.createMeshNode(pAssetMesh);
-	Matrix4f matRotation;
-	matRotation.makeRotationYPR(0, Math::deg2rad(-90.0f), 0);
-	pNode->setMatrix(matRotation);
-	pScene->addNode(pNode);
-	gltf.setMainScene(pScene);
-
-	GLTFBuffer* pCompressedBuffer = _options.useCompression ? gltf.createBuffer() : nullptr;
-	GLTFBuffer* pMeshBuffer = gltf.createBuffer();
-	GLTFBuffer* pFirstBuffer = pCompressedBuffer ? pCompressedBuffer : pMeshBuffer;
-
-	auto pAccPosition = gltf.createAccessor<float>(GLTFAccessorType::VEC3);
-	pAccPosition->addVertexData(pMeshBuffer, (float*)(pMesh->mVertices), numVertices);
-	pAccPosition->updateBounds();
-	prim.addPositions(pAccPosition);
-
-	if (exportNormals) {
-		auto pAccNormals = gltf.createAccessor<float>(GLTFAccessorType::VEC3);
-		pAccNormals->addVertexData(pMeshBuffer, (float*)(pMesh->mNormals), numVertices);
-		prim.addNormals(pAccNormals);
-	}
-
-	if (exportUVs) {
-		auto pAccUVs = gltf.createAccessor<float>(GLTFAccessorType::VEC2);
-		float* pData = pAccUVs->allocateVertexData(pMeshBuffer, numVertices);
-		const aiVector3D* pSrc = pMesh->mTextureCoords[0];
-
+	if (numComponents < 3) {
+		GLTFAccessorType accType = numComponents == 0 ? GLTFAccessorType::SCALAR : GLTFAccessorType::VEC2;
+		pAccUVs = asset.createAccessor<float>(accType);
+		const float* pSrc = (const float*)pAiMesh->mTextureCoords[channel];
+		float* pDst = pAccUVs->allocateVertexData(pBuffer, numVertices);
 		for (size_t i = 0; i < numVertices; ++i) {
-			const aiVector3D& v = pSrc[i];
-			pData[i * 2    ] = v.x;
-			pData[i * 2 + 1] = 1.0f - v.y;
+			pDst[i * numComponents] = pSrc[i * 3];
 		}
-		prim.addTexCoords(pAccUVs);
+		if (numComponents == 2) {
+			for (size_t i = 0; i < numVertices; ++i) {
+				pDst[i * numComponents + 1] = pSrc[i * 3 + 1];
+			}
+		}
+	}
+	else {
+		pAccUVs = asset.createAccessor<float>(GLTFAccessorType::VEC3);
+		pAccUVs->addVertexData(pBuffer, (float*)(pAiMesh->mTextureCoords[channel]), numVertices);
 	}
 
-	auto pAccIndices = gltf.createAccessor<uint32_t>(GLTFAccessorType::SCALAR);
-	uint32_t* pData = pAccIndices->allocateIndexData(pMeshBuffer, numIndices);
-	const aiFace* pSrc = pMesh->mFaces;
-	
-	for (size_t i = 0; i < numFaces; ++i) {
-		const aiFace& f = pSrc[i];
-		pData[i * 3    ] = f.mIndices[0];
-		pData[i * 3 + 1] = f.mIndices[1];
-		pData[i * 3 + 2] = f.mIndices[2];
-	}
+	primitive.addTexCoords(pAccUVs);
+}
 
-	pAccIndices->bufferView()->setTarget(GLTFBufferViewTarget::ELEMENT_ARRAY_BUFFER);
-	prim.setIndices(pAccIndices);
 
-	// DRACO MESH COMPRESSION
-	if (_options.useCompression) {
-		GLTFDracoExtension* pDraco = new GLTFDracoExtension();
-		gltf.addExtension(pDraco, true);
-		pDraco->encode(&prim, pCompressedBuffer);
-	}
+GLTFMaterial* GLTFExporter::_exportMaterial(
+	const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, GLTFBuffer* pBuffer, GLTFMaterial* pDefaultMaterial)
+{
+	const aiMesh* pAiMesh = pAiScene->mMeshes[meshIndex];
+	const aiMaterial* pAiMaterial = pAiScene->mMaterials[pAiMesh->mMaterialIndex];
 
-	// GLTF MATERIAL
-	auto pMaterial = gltf.createMaterial("default");
+	// TODO: Implement
+
+	return pDefaultMaterial;
+}
+
+GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer* pBuffer)
+{
+	GLTFMaterial* pMaterial = asset.createMaterial("default");
 	GLTFPBRMetallicRoughness pbr;
 	GLTFTexture* pTexture = nullptr;
 
 	if (!_options.diffuseMapFile.empty()) {
 		if (_options.embedMaps) {
-			auto pTexDiffuseView = pFirstBuffer->addImage(_options.diffuseMapFile);
-			pTexture = gltf.createTexture(pTexDiffuseView, _mimeTypeFromExtension(_options.diffuseMapFile));
+			auto pTexDiffuseView = pBuffer->addImage(_options.diffuseMapFile);
+			pTexture = asset.createTexture(pTexDiffuseView, _mimeTypeFromExtension(_options.diffuseMapFile));
 		}
 		else {
-			pTexture = gltf.createTexture(_options.diffuseMapFile);
+			pTexture = asset.createTexture(_options.diffuseMapFile);
 		}
 		pbr.setBaseColorTexture(pTexture);
 	}
 	if (!_options.occlusionMapFile.empty()) {
 		if (_options.embedMaps) {
-			auto pTexOcclusionView = pFirstBuffer->addImage(_options.occlusionMapFile);
-			pTexture = gltf.createTexture(pTexOcclusionView, _mimeTypeFromExtension(_options.occlusionMapFile));
+			auto pTexOcclusionView = pBuffer->addImage(_options.occlusionMapFile);
+			pTexture = asset.createTexture(pTexOcclusionView, _mimeTypeFromExtension(_options.occlusionMapFile));
 		}
 		else {
-			pTexture = gltf.createTexture(_options.occlusionMapFile);
+			pTexture = asset.createTexture(_options.occlusionMapFile);
 		}
 		pMaterial->setOcclusionTexture(pTexture);
 	}
 	if (!_options.normalMapFile.empty()) {
 		if (_options.embedMaps) {
-			auto pTexNormalView = pFirstBuffer->addImage(_options.normalMapFile);
-			pTexture = gltf.createTexture(pTexNormalView, _mimeTypeFromExtension(_options.normalMapFile));
+			auto pTexNormalView = pBuffer->addImage(_options.normalMapFile);
+			pTexture = asset.createTexture(pTexNormalView, _mimeTypeFromExtension(_options.normalMapFile));
 		}
 		else {
-			pTexture = gltf.createTexture(_options.normalMapFile);
+			pTexture = asset.createTexture(_options.normalMapFile);
 		}
 		pMaterial->setNormalTexture(pTexture);
 	}
 
-	pMaterial->setPBRMetallicRoughness(pbr);
-	prim.setMaterial(pMaterial);
+	return pMaterial;
+}
 
-	if (_options.writeGLB) {
-		if (!gltf.saveGLB(baseFileName + ".glb")) {
-			return Result::error("failed to write GLB file");
-		}
+Result GLTFExporter::_dracoCompressMesh(const aiMesh* pMesh, draco::EncoderBuffer* pEncoderBuffer)
+{
+	draco::Mesh dracoMesh;
+	_AttribIndices attrIds;
 
-		return Result::ok();
+	Result result = _dracoBuildMesh(pMesh, &dracoMesh, &attrIds);
+	if (result.isError()) {
+		return result;
 	}
 
-	pFirstBuffer->setUri(baseFileName + ".bin");
-	pFirstBuffer->save(baseFileName + ".bin");
-	//pMeshBuffer->setUri(baseFileName + "_mesh.bin");
-	//pMainBuffer->save(baseFileName + "_mesh.bin");
+	draco::Encoder encoder;
+	auto encodeStatus = encoder.EncodeMeshToBuffer(dracoMesh, pEncoderBuffer);
+	if (!encodeStatus.ok()) {
+		return Result::error(string("failed to encode mesh: ") + encodeStatus.error_msg());
+	}
 
-	if (!gltf.saveGLTF(baseFileName + ".gltf", 2)) {
-		return Result::error("failed to write glTF file");
+	draco::Decoder decoder;
+	draco::DecoderBuffer decoderBuffer;
+	decoderBuffer.Init(pEncoderBuffer->data(), pEncoderBuffer->size());
+	auto decodeResult = decoder.DecodeMeshFromBuffer(&decoderBuffer);
+	if (!decodeResult.ok()) {
+		return Result::error("failed to decode mesh");
+	}
+
+	auto& decodedMesh = decodeResult.value();
+
+	return Result::ok();
+}
+
+Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, _AttribIndices* pAttribIndices)
+{
+	if (pMesh->mPrimitiveTypes != uint32_t(aiPrimitiveType_TRIANGLE)) {
+		return Result::error(string("mesh contains non-triangle primitives: ") + pMesh->mName.C_Str());
+	}
+
+	uint32_t numVertices = pMesh->mNumVertices;
+	uint32_t v2fsize = sizeof(float) * 2;
+	uint32_t v3fsize = sizeof(float) * 3;
+
+	GeometryAttribute positionAttribute;
+	positionAttribute.Init(GeometryAttribute::POSITION,
+		_dracoCreateBuffer(pMesh->mVertices, v3fsize * numVertices),
+		3, draco::DT_FLOAT32, false, v3fsize, 0);
+	pAttribIndices->position = pDracoMesh->AddAttribute(positionAttribute, false, numVertices);
+
+	if (pMesh->HasNormals() && _options.exportNormals) {
+		GeometryAttribute normalAttribute;
+		normalAttribute.Init(GeometryAttribute::NORMAL,
+			_dracoCreateBuffer(pMesh->mNormals, v3fsize * numVertices),
+			3, draco::DT_FLOAT32, false, v3fsize, 0);
+		pAttribIndices->normal = pDracoMesh->AddAttribute(normalAttribute, false, numVertices);
+	}
+
+	if (pMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+		pAttribIndices->texCoord0 = _dracoAddTexCoords(pMesh, pDracoMesh, 0);
+	}
+	if (pMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+		pAttribIndices->texCoord1 = _dracoAddTexCoords(pMesh, pDracoMesh, 1);
+	}
+
+	return _dracoAddFaces(pMesh, pDracoMesh);
+}
+
+Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh)
+{
+	uint32_t numVertices = pMesh->mNumVertices;
+	uint32_t numFaces = pMesh->mNumFaces;
+	uint32_t numPoints = numFaces * 3;
+
+	pDracoMesh->set_num_points(numPoints);
+	pDracoMesh->SetNumFaces(numFaces);
+
+	for (uint32_t i = 0; i < numFaces; ++i) {
+		draco::Mesh::Face face;
+		for (uint32_t c = 0; c < 3; ++c) {
+			face[c] = 3 * i + c;
+		}
+		pDracoMesh->SetFace(draco::FaceIndex(i), face);
+	}
+
+	int numAttribs = pDracoMesh->num_attributes();
+	for (int i = 0; i < numAttribs; ++i) {
+		draco::PointAttribute* pAttrib = pDracoMesh->attribute(i);
+		pAttrib->SetExplicitMapping(numVertices);
+
+		for (uint32_t j = 0; j < numFaces; ++j) {
+			const aiFace& face = pMesh->mFaces[j];
+			if (face.mNumIndices != 3) {
+				return Result::error("non-triangular face found. all faces must be triangles.");
+			}
+			pAttrib->SetPointMapEntry(draco::PointIndex(j * 3), draco::AttributeValueIndex(face.mIndices[0]));
+			pAttrib->SetPointMapEntry(draco::PointIndex(j * 3 + 1), draco::AttributeValueIndex(face.mIndices[1]));
+			pAttrib->SetPointMapEntry(draco::PointIndex(j * 3 + 2), draco::AttributeValueIndex(face.mIndices[2]));
+		}
 	}
 
 	return Result::ok();
+}
+
+draco::DataBuffer* GLTFExporter::_dracoCreateBuffer(const void* pData, size_t byteLength)
+{
+	draco::DataBuffer* pBuffer = new draco::DataBuffer();
+	_dracoBuffers.push_back(pBuffer);
+	pBuffer->Resize(byteLength);
+	if (pData) {
+		pBuffer->Write(0, pData, byteLength);
+	}
+	return pBuffer;
+
+}
+
+int GLTFExporter::_dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMesh, uint32_t channel)
+{
+	GeometryAttribute texCoordsAttribute;
+	uint32_t numComponents = pMesh->mNumUVComponents[channel];
+	uint32_t componentSize = numComponents * sizeof(float);
+	uint32_t numVertices = pMesh->mNumVertices;
+
+	// if the assimp mesh's UV channel has 3 components, just copy it to buffer in one go
+	if (numComponents == 3) {
+		texCoordsAttribute.Init(GeometryAttribute::TEX_COORD,
+			_dracoCreateBuffer(pMesh->mTextureCoords[channel], componentSize * numVertices),
+			numComponents, draco::DT_FLOAT32, false, componentSize, 0);
+		return pDracoMesh->AddAttribute(texCoordsAttribute, false, numVertices);
+	}
+
+	// if the UV channel has 1 or 2 components, create a smaller draco buffer and do an interleaved copy
+	auto pBuffer = _dracoCreateBuffer(nullptr, componentSize * numVertices);
+	const float* pSrc = (const float*)pMesh->mTextureCoords[channel];
+	float* pDst = (float*)pBuffer->data();
+	for (uint32_t i = 0; i < numVertices; ++i) {
+		pDst[i * numComponents] = pSrc[i * 3];
+	}
+	if (numComponents == 2) {
+		for (uint32_t i = 0; i < numVertices; ++i) {
+			pDst[i * numComponents + 1] = pSrc[i * 3 + 1];
+		}
+	}
+
+	texCoordsAttribute.Init(GeometryAttribute::TEX_COORD,
+		pBuffer, numComponents, draco::DT_FLOAT32, false, componentSize, 0);
+	return pDracoMesh->AddAttribute(texCoordsAttribute, false, numVertices);
+}
+
+void GLTFExporter::_dracoCleanup()
+{
+	F_SAFE_DELETE_PTR_RANGE(_dracoBuffers);
+	_dracoBuffers.clear();
 }
