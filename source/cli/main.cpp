@@ -1,7 +1,7 @@
 /**
  * Intermesh CLI
  *
- * @author Ralph Wiedemeier <ralph@framefactory.io>
+ * @author Ralph Wiedemeier <ralph@framefactory.ch>
  * @copyright (c) 2018 Frame Factory GmbH.
  */
 
@@ -28,7 +28,7 @@ int main(int argc, char** ppArgv)
 #endif
 
 	cxxopts::Options options(
-		"MeshSmith CLI v0.80",
+		"MeshSmith CLI v0.81",
 		"Mesh Conversion Tool, Command Line Interface"
 	);
 
@@ -46,7 +46,6 @@ int main(int argc, char** ppArgv)
 		("n,stripnormals", "Strip normals", cxxopts::value<bool>())
 		("u,stripuvs", "Strip UVs", cxxopts::value<bool>())
 		("z,swizzle", "Swizzle coordinates", cxxopts::value<std::string>())
-		("c,center", "Center scene bounding box", cxxopts::value<bool>())
 		("s,scale", "Scale scene by given factor", cxxopts::value<float>())
 		("r,report", "Print JSON-formatted report", cxxopts::value<bool>())
 		("l,list", "Print JSON-formatted list of export formats", cxxopts::value<bool>())
@@ -75,7 +74,6 @@ int main(int argc, char** ppArgv)
 		bool logVerbose = (parsed.count("verbose") != 0);
 
 		bool swizzle = (parsed.count("swizzle") != 0);
-		bool center = (parsed.count("center") != 0);
 		bool scale = (parsed.count("scale") != 0);
 
 		std::string inputFileName{ parsed.count("input") ? parsed["input"].as<std::string>() : "" };
@@ -86,7 +84,7 @@ int main(int argc, char** ppArgv)
 			exit(1);
 		}
 
-		GLTFExporterLegacyOptions options;
+		GLTFExporterOptions options;
 		options.embedMaps = (parsed.count("embedmaps") != 0);
 		options.useCompression = (parsed.count("draco") != 0);
 		options.diffuseMapFile = parsed.count("diffusemap") ? parsed["diffusemap"].as<std::string>() : "";
@@ -113,10 +111,6 @@ int main(int argc, char** ppArgv)
 			scene.swizzle(swizzleOrder);
 		}
 		
-		if (center) {
-			scene.center();
-		}
-
 		if (scale) {
 			float scalingFactor = parsed["scale"].as<float>();
 			scene.scale(scalingFactor);
@@ -137,7 +131,7 @@ int main(int argc, char** ppArgv)
 
 		result = scene.save(outputFileBaseName, outputFormat, joinVertices, stripNormals, stripUVs);
 		if (result.isError()) {
-			std::cout << Scene::getJsonStatus(result.message());
+			std::cout << Scene::getJsonStatus(result.message()).dump(2);
 			exit(1);
 		}
 

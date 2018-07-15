@@ -1,13 +1,13 @@
 /**
 * Intermesh Engine
 *
-* @author Ralph Wiedemeier <ralph@framefactory.io>
+* @author Ralph Wiedemeier <ralph@framefactory.ch>
 * @copyright (c) 2018 Frame Factory GmbH.
 */
 
 #include "Scene.h"
 #include "Processor.h"
-#include "GLTFExporterLegacy.h"
+#include "GLTFExporter.h"
 
 #include "core/json.h"
 
@@ -76,7 +76,7 @@ Scene::~Scene()
 	F_SAFE_DELETE(_pExporter);
 }
 
-void Scene::setGLTFOptions(const GLTFExporterLegacyOptions& options)
+void Scene::setGLTFOptions(const GLTFExporterOptions& options)
 {
 	_gltfExporterOptions = options;
 }
@@ -132,14 +132,14 @@ Result Scene::save(const std::string& fileName, const std::string& formatId, boo
 			cout << "Exporting using custom glTF exporter." << endl;
 		}
 
-		GLTFExporterLegacyOptions options(_gltfExporterOptions);
+		GLTFExporterOptions options(_gltfExporterOptions);
 		options.verbose = _verbose;
 		options.writeGLB = (formatId == "glbx");
 
-		GLTFExporterLegacy exporter(_pScene);
+		GLTFExporter exporter;
 		exporter.setOptions(options);
 
-		Result result = exporter.exportScene(fileName);
+		Result result = exporter.exportScene(_pScene, fileName);
 		if (result.isError()) {
 			return result;
 		}

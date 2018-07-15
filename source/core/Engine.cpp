@@ -1,7 +1,7 @@
 /**
 * Intermesh Engine
 *
-* @author Ralph Wiedemeier <ralph@framefactory.io>
+* @author Ralph Wiedemeier <ralph@framefactory.ch>
 * @copyright (c) 2018 Frame Factory GmbH.
 */
  

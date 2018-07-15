@@ -1,7 +1,7 @@
 /**
  * Intermesh Engine
  *
- * @author Ralph Wiedemeier <ralph@framefactory.io>
+ * @author Ralph Wiedemeier <ralph@framefactory.ch>
  * @copyright (c) 2018 Frame Factory GmbH.
  */
  
@@ -10,7 +10,6 @@
 
 #include "library.h"
 
-#include "GLTFExporterLegacy.h"
 #include "GLTFExporter.h"
 #include "core/ResultT.h"
 
@@ -41,7 +40,7 @@ namespace meshsmith
 		Scene& operator=(const Scene& other) = delete;
 
 	public:
-		void setGLTFOptions(const GLTFExporterLegacyOptions& options);
+		void setGLTFOptions(const GLTFExporterOptions& options);
 		void setVerbose(bool enabled);
 
 		flow::Result load(const std::string& fileName, bool stripNormals, bool stripUVs);
@@ -65,7 +64,7 @@ namespace meshsmith
 		const aiScene* _pScene;
 		std::string _fileName;
 
-		GLTFExporterLegacyOptions _gltfExporterOptions;
+		GLTFExporterOptions _gltfExporterOptions;
 
 		bool _verbose;
 	};

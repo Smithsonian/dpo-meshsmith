@@ -1,7 +1,7 @@
 /**
 * MeshSmith
 *
-* @author Ralph Wiedemeier <ralph@framefactory.io>
+* @author Ralph Wiedemeier <ralph@framefactory.ch>
 * @copyright (c) 2018 Frame Factory GmbH.
 */
 
@@ -16,28 +16,31 @@
 #include <assimp/scene.h>
 #include <assimp/mesh.h>
 
+#pragma warning(push)
+#pragma warning(disable:4267)
 #include "draco/mesh/mesh.h"
 #include "draco/compression/encode.h"
 #include "draco/compression/decode.h"
+#pragma warning(pop)
 
-#include <boost/filesystem.hpp>
+#include <iostream>
 
 using namespace meshsmith;
 using namespace flow;
-using namespace boost;
 
 using draco::GeometryAttribute;
 using std::string;
-
+using std::cout;
+using std::endl;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 static GLTFMimeType _mimeTypeFromExtension(const std::string& filePath)
 {
-	filesystem::path fp(filePath);
-	string ext = fp.extension().string();
+	size_t dotPos = filePath.find_last_of('.');
+	string extenstion = filePath.substr(dotPos + 1);
 
-	if (ext == "png" || ext == "PNG") {
+	if (extenstion == "png" || extenstion == "PNG") {
 		return GLTFMimeType::IMAGE_PNG;
 	}
 
@@ -54,8 +57,16 @@ GLTFExporter::~GLTFExporter()
 {
 }
 
-Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& fileName)
+void GLTFExporter::setOptions(const GLTFExporterOptions& options)
 {
+	_options = options;
+}
+
+Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath)
+{
+	size_t dotPos = filePath.find_last_of('.');
+	string baseFilePath = filePath.substr(0, dotPos);
+
 	uint32_t numMeshes = pAiScene->mNumMeshes;
 	if (numMeshes < 1) {
 		return Result::error("scene contains no meshes");
@@ -63,28 +74,49 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& fileName
 
 	// for now, export first mesh
 	GLTFAsset asset;
+	asset.setGenerator("MeshSmith mesh conversion tool");
+
 	GLTFBuffer* pBuffer = asset.createBuffer();
 
-	auto result = exportMesh(pAiScene, 0, asset, pBuffer, _createDefaultMaterial(asset, pBuffer));
+	auto result = _exportMesh(pAiScene, 0, asset, pBuffer);
 	if (result.isError()) {
 		return result;
 	}
 
+	auto pMesh = result.value();
+
+	auto pDefaultMaterial = _createDefaultMaterial(asset, pBuffer);
+	//GLTFMaterial* pMaterial = _exportMaterial(pAiScene, 0, asset, pBuffer);
+	pMesh->setMaterial(pDefaultMaterial);
+
 	GLTFScene* pScene = asset.createScene();
-	GLTFMeshNode* pNode = asset.createMeshNode(result.value());
-	Matrix4f matRotation;
-	matRotation.makeRotationYPR(0, Math::deg2rad(-90.0f), 0);
-	pNode->setMatrix(matRotation);
+	GLTFMeshNode* pNode = asset.createMeshNode(pMesh);
 	pScene->addNode(pNode);
 	asset.setMainScene(pScene);
 
-	// TODO: Implement
+	if (_options.writeGLB) {
+		string glbFilePath(baseFilePath + ".glb");
+		if (!asset.saveGLB(glbFilePath)) {
+			return Result::error("failed to write GLB file: " + glbFilePath);
+		}
+
+		return Result::ok();
+	}
+
+	string binaryFilePath(baseFilePath + ".bin");
+	pBuffer->setUri(binaryFilePath);
+	pBuffer->save(binaryFilePath);
+
+	string gltfFilePath(baseFilePath + ".gltf");
+	if (!asset.saveGLTF(gltfFilePath, 2)) {
+		return Result::error("failed to write glTF file: " + gltfFilePath);
+	}
 
 	return Result::ok();
 }
 
-ResultT<GLTFMesh*> GLTFExporter::exportMesh(
-	const aiScene* pAiScene, size_t meshIndex, GLTFAsset& asset, GLTFBuffer* pBuffer, GLTFMaterial* pDefaultMaterial)
+ResultT<GLTFMesh*> GLTFExporter::_exportMesh(
+	const aiScene* pAiScene, size_t meshIndex, GLTFAsset& asset, GLTFBuffer* pBuffer)
 {
 	const aiMesh* pAiMesh = pAiScene->mMeshes[meshIndex];
 
@@ -97,13 +129,47 @@ ResultT<GLTFMesh*> GLTFExporter::exportMesh(
 	size_t numVertices = pAiMesh->mNumVertices;
 
 	if (_options.useCompression) {
+		GLTFDracoExtension* pDracoExtension = new GLTFDracoExtension();
+		asset.addExtension(pDracoExtension, true);
+		primitive.addExtension(pDracoExtension);
+
 		draco::EncoderBuffer encoderBuffer;
-		Result result = _dracoCompressMesh(pAiMesh, &encoderBuffer);
+		Result result = _dracoCompressMesh(pAiMesh, pDracoExtension, pBuffer);
 		if (result.isError()) {
 			return result;
 		}
 
-		// TODO: Finish
+		auto pAccPosition = asset.createAccessor<float>(GLTFAccessorType::VEC3);
+		pAccPosition->setElementCount(numVertices);
+		pAccPosition->updateBounds((float*)(pAiMesh->mVertices));
+		primitive.addPositions(pAccPosition);
+
+		if (pAiMesh->HasNormals() && _options.exportNormals) {
+			auto pAccNormals = asset.createAccessor<float>(GLTFAccessorType::VEC3);
+			pAccNormals->setElementCount(numVertices);
+			primitive.addNormals(pAccNormals);
+		}
+
+		if (pAiMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+			size_t numComponents = pAiMesh->mNumUVComponents[0];
+			GLTFAccessorType accType = numComponents == 0 ? GLTFAccessorType::SCALAR : GLTFAccessorType::VEC2;
+			auto pAccUVs = asset.createAccessor<float>(accType);
+			pAccUVs->setElementCount(numVertices);
+			primitive.addAttribute(GLTFAttributeType::TEXCOORD_0, pAccUVs);
+		}
+		if (pAiMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+			size_t numComponents = pAiMesh->mNumUVComponents[1];
+			GLTFAccessorType accType = numComponents == 0 ? GLTFAccessorType::SCALAR : GLTFAccessorType::VEC2;
+			auto pAccUVs = asset.createAccessor<float>(accType);
+			pAccUVs->setElementCount(numVertices);
+			primitive.addAttribute(GLTFAttributeType::TEXCOORD_1, pAccUVs);
+		}
+
+		if (pAiMesh->HasFaces()) {
+			auto pAccIndices = asset.createAccessor<uint32_t>(GLTFAccessorType::SCALAR);
+			pAccIndices->setElementCount(pAiMesh->mNumFaces * 3);
+			primitive.setIndices(pAccIndices);
+		}
 	}
 	else {
 		auto pAccPosition = asset.createAccessor<float>(GLTFAccessorType::VEC3);
@@ -123,17 +189,45 @@ ResultT<GLTFMesh*> GLTFExporter::exportMesh(
 		if (pAiMesh->HasTextureCoords(1) && _options.exportTexCoords) {
 			_exportTexCoords(pAiMesh, asset, primitive, pBuffer, 1);
 		}
-	}
 
-	GLTFMaterial* pMaterial = _exportMaterial(pAiScene, meshIndex, asset, pBuffer, pDefaultMaterial);
-	primitive.setMaterial(pMaterial);
+		if (pAiMesh->HasFaces()) {
+			Result result = pAiMesh->mNumVertices <= 0xffff
+				? _exportFaces<uint16_t>(pAiMesh, asset, primitive, pBuffer)
+				: _exportFaces<uint32_t>(pAiMesh, asset, primitive, pBuffer);
+
+			if (result.isError()) {
+				return result;
+			}
+		}
+	}
 
 	return ResultT<GLTFMesh*>(pMesh);
 }
 
-void GLTFExporter::setOptions(const GLTFExporterOptions& options)
+template<typename T>
+Result GLTFExporter::_exportFaces(
+	const aiMesh* pAiMesh, GLTFAsset& asset, GLTFPrimitive& primitive, GLTFBuffer* pBuffer)
 {
-	_options = options;
+	size_t numFaces = pAiMesh->mNumFaces;
+
+	auto pAccIndices = asset.createAccessor<T>(GLTFAccessorType::SCALAR);
+	T* pDst = pAccIndices->allocateIndexData(pBuffer, numFaces * 3);
+	const aiFace* pSrc = pAiMesh->mFaces;
+
+	for (size_t i = 0; i < numFaces; ++i) {
+		const aiFace& f = pSrc[i];
+		if (f.mNumIndices != 3) {
+			return Result::error("mesh contains non triangular face");
+		}
+		pDst[i * 3] = f.mIndices[0];
+		pDst[i * 3 + 1] = f.mIndices[1];
+		pDst[i * 3 + 2] = f.mIndices[2];
+	}
+
+	pAccIndices->bufferView()->setTarget(GLTFBufferViewTarget::ELEMENT_ARRAY_BUFFER);
+	primitive.setIndices(pAccIndices);
+
+	return Result::ok();
 }
 
 void GLTFExporter::_exportTexCoords(
@@ -153,7 +247,7 @@ void GLTFExporter::_exportTexCoords(
 		}
 		if (numComponents == 2) {
 			for (size_t i = 0; i < numVertices; ++i) {
-				pDst[i * numComponents + 1] = pSrc[i * 3 + 1];
+				pDst[i * numComponents + 1] = 1.0f - pSrc[i * 3 + 1];
 			}
 		}
 	}
@@ -167,14 +261,14 @@ void GLTFExporter::_exportTexCoords(
 
 
 GLTFMaterial* GLTFExporter::_exportMaterial(
-	const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, GLTFBuffer* pBuffer, GLTFMaterial* pDefaultMaterial)
+	const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, GLTFBuffer* pBuffer)
 {
 	const aiMesh* pAiMesh = pAiScene->mMeshes[meshIndex];
 	const aiMaterial* pAiMaterial = pAiScene->mMaterials[pAiMesh->mMaterialIndex];
 
 	// TODO: Implement
 
-	return pDefaultMaterial;
+	return nullptr;
 }
 
 GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer* pBuffer)
@@ -214,28 +308,41 @@ GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer*
 		pMaterial->setNormalTexture(pTexture);
 	}
 
+	pMaterial->setPBRMetallicRoughness(pbr);
 	return pMaterial;
 }
 
-Result GLTFExporter::_dracoCompressMesh(const aiMesh* pMesh, draco::EncoderBuffer* pEncoderBuffer)
+Result GLTFExporter::_dracoCompressMesh(
+	const aiMesh* pMesh, GLTFDracoExtension* pDracoExtension, GLTFBuffer* pBuffer)
 {
 	draco::Mesh dracoMesh;
-	_AttribIndices attrIds;
 
-	Result result = _dracoBuildMesh(pMesh, &dracoMesh, &attrIds);
+	if (_options.verbose) {
+		cout << "Draco Compression: Build Mesh" << endl;
+	}
+
+	Result result = _dracoBuildMesh(pMesh, &dracoMesh, pDracoExtension);
 	if (result.isError()) {
 		return result;
 	}
 
+	if (_options.verbose) {
+		cout << "Draco Compression: Encode Mesh" << endl;
+	}
+	draco::EncoderBuffer encoderBuffer;
 	draco::Encoder encoder;
-	auto encodeStatus = encoder.EncodeMeshToBuffer(dracoMesh, pEncoderBuffer);
+	encoder.SetSpeedOptions(3, 3);
+	auto encodeStatus = encoder.EncodeMeshToBuffer(dracoMesh, &encoderBuffer);
 	if (!encodeStatus.ok()) {
 		return Result::error(string("failed to encode mesh: ") + encodeStatus.error_msg());
 	}
 
+	if (_options.verbose) {
+		cout << "Draco Compression: Decode Mesh" << endl;
+	}
 	draco::Decoder decoder;
 	draco::DecoderBuffer decoderBuffer;
-	decoderBuffer.Init(pEncoderBuffer->data(), pEncoderBuffer->size());
+	decoderBuffer.Init(encoderBuffer.data(), encoderBuffer.size());
 	auto decodeResult = decoder.DecodeMeshFromBuffer(&decoderBuffer);
 	if (!decodeResult.ok()) {
 		return Result::error("failed to decode mesh");
@@ -243,10 +350,13 @@ Result GLTFExporter::_dracoCompressMesh(const aiMesh* pMesh, draco::EncoderBuffe
 
 	auto& decodedMesh = decodeResult.value();
 
+	GLTFBufferView* pEncodedView = pBuffer->addData(encoderBuffer.data(), encoderBuffer.size());
+	pDracoExtension->setEncodedBufferView(pEncodedView);
+
 	return Result::ok();
 }
 
-Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, _AttribIndices* pAttribIndices)
+Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, GLTFDracoExtension* pDracoExtension)
 {
 	if (pMesh->mPrimitiveTypes != uint32_t(aiPrimitiveType_TRIANGLE)) {
 		return Result::error(string("mesh contains non-triangle primitives: ") + pMesh->mName.C_Str());
@@ -256,38 +366,55 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	uint32_t v2fsize = sizeof(float) * 2;
 	uint32_t v3fsize = sizeof(float) * 3;
 
-	GeometryAttribute positionAttribute;
-	positionAttribute.Init(GeometryAttribute::POSITION,
-		_dracoCreateBuffer(pMesh->mVertices, v3fsize * numVertices),
-		3, draco::DT_FLOAT32, false, v3fsize, 0);
-	pAttribIndices->position = pDracoMesh->AddAttribute(positionAttribute, false, numVertices);
-
-	if (pMesh->HasNormals() && _options.exportNormals) {
-		GeometryAttribute normalAttribute;
-		normalAttribute.Init(GeometryAttribute::NORMAL,
-			_dracoCreateBuffer(pMesh->mNormals, v3fsize * numVertices),
-			3, draco::DT_FLOAT32, false, v3fsize, 0);
-		pAttribIndices->normal = pDracoMesh->AddAttribute(normalAttribute, false, numVertices);
-	}
-
-	if (pMesh->HasTextureCoords(0) && _options.exportTexCoords) {
-		pAttribIndices->texCoord0 = _dracoAddTexCoords(pMesh, pDracoMesh, 0);
-	}
-	if (pMesh->HasTextureCoords(1) && _options.exportTexCoords) {
-		pAttribIndices->texCoord1 = _dracoAddTexCoords(pMesh, pDracoMesh, 1);
-	}
-
-	return _dracoAddFaces(pMesh, pDracoMesh);
-}
-
-Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh)
-{
-	uint32_t numVertices = pMesh->mNumVertices;
 	uint32_t numFaces = pMesh->mNumFaces;
 	uint32_t numPoints = numFaces * 3;
 
 	pDracoMesh->set_num_points(numPoints);
 	pDracoMesh->SetNumFaces(numFaces);
+
+	GeometryAttribute positionAttribute;
+	positionAttribute.Init(GeometryAttribute::POSITION, nullptr, 3, draco::DT_FLOAT32, false, v3fsize, 0);
+	int posIndex = pDracoMesh->AddAttribute(positionAttribute, false, numVertices);
+	auto pPosAttrib = pDracoMesh->attribute(posIndex);
+	pPosAttrib->Reset(numVertices);
+	pPosAttrib->buffer()->Write(0, pMesh->mVertices, v3fsize * numVertices);
+	pDracoExtension->addAttribute(GLTFAttributeType::POSITION, posIndex);
+
+	if (pMesh->HasNormals() && _options.exportNormals) {
+		GeometryAttribute normalAttribute;
+		normalAttribute.Init(GeometryAttribute::NORMAL, nullptr, 3, draco::DT_FLOAT32, false, v3fsize, 0);
+		int normIndex = pDracoMesh->AddAttribute(normalAttribute, false, numVertices);
+		auto pNormAttrib = pDracoMesh->attribute(normIndex);
+		pNormAttrib->Reset(numVertices);
+		pNormAttrib->buffer()->Write(0, pMesh->mNormals, v3fsize * numVertices);
+		pDracoExtension->addAttribute(GLTFAttributeType::NORMAL, normIndex);
+	}
+
+	if (pMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 0);
+		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_0, texIndex);
+	}
+	if (pMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 1);
+		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_1, texIndex);
+	}
+
+	Result result = _dracoAddFaces(pMesh, pDracoMesh);
+	if (result.isError()) {
+		return result;
+	}
+
+#ifdef DRACO_ATTRIBUTE_DEDUPLICATION_SUPPORTED
+	pDracoMesh->DeduplicateAttributeValues();
+	pDracoMesh->DeduplicatePointIds();
+#endif
+
+	return Result::ok();
+}
+
+Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh)
+{
+	uint32_t numFaces = pMesh->mNumFaces;
 
 	for (uint32_t i = 0; i < numFaces; ++i) {
 		draco::Mesh::Face face;
@@ -300,7 +427,7 @@ Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh
 	int numAttribs = pDracoMesh->num_attributes();
 	for (int i = 0; i < numAttribs; ++i) {
 		draco::PointAttribute* pAttrib = pDracoMesh->attribute(i);
-		pAttrib->SetExplicitMapping(numVertices);
+		pAttrib->SetExplicitMapping(numFaces * 3);
 
 		for (uint32_t j = 0; j < numFaces; ++j) {
 			const aiFace& face = pMesh->mFaces[j];
@@ -316,18 +443,6 @@ Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh
 	return Result::ok();
 }
 
-draco::DataBuffer* GLTFExporter::_dracoCreateBuffer(const void* pData, size_t byteLength)
-{
-	draco::DataBuffer* pBuffer = new draco::DataBuffer();
-	_dracoBuffers.push_back(pBuffer);
-	pBuffer->Resize(byteLength);
-	if (pData) {
-		pBuffer->Write(0, pData, byteLength);
-	}
-	return pBuffer;
-
-}
-
 int GLTFExporter::_dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMesh, uint32_t channel)
 {
 	GeometryAttribute texCoordsAttribute;
@@ -335,30 +450,30 @@ int GLTFExporter::_dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	uint32_t componentSize = numComponents * sizeof(float);
 	uint32_t numVertices = pMesh->mNumVertices;
 
+	texCoordsAttribute.Init(GeometryAttribute::TEX_COORD, nullptr, numComponents, draco::DT_FLOAT32, false, componentSize, 0);
+	int index = pDracoMesh->AddAttribute(texCoordsAttribute, false, numVertices);
+	auto pTexAttrib = pDracoMesh->attribute(index);
+	pTexAttrib->Reset(numVertices);
+
 	// if the assimp mesh's UV channel has 3 components, just copy it to buffer in one go
 	if (numComponents == 3) {
-		texCoordsAttribute.Init(GeometryAttribute::TEX_COORD,
-			_dracoCreateBuffer(pMesh->mTextureCoords[channel], componentSize * numVertices),
-			numComponents, draco::DT_FLOAT32, false, componentSize, 0);
-		return pDracoMesh->AddAttribute(texCoordsAttribute, false, numVertices);
+		pTexAttrib->buffer()->Write(0, pMesh->mTextureCoords[channel], componentSize * numVertices);
 	}
-
-	// if the UV channel has 1 or 2 components, create a smaller draco buffer and do an interleaved copy
-	auto pBuffer = _dracoCreateBuffer(nullptr, componentSize * numVertices);
-	const float* pSrc = (const float*)pMesh->mTextureCoords[channel];
-	float* pDst = (float*)pBuffer->data();
-	for (uint32_t i = 0; i < numVertices; ++i) {
-		pDst[i * numComponents] = pSrc[i * 3];
-	}
-	if (numComponents == 2) {
+	else {
+		// if the UV channel has 1 or 2 components, create a smaller draco buffer and do an interleaved copy
+		const float* pSrc = (const float*)pMesh->mTextureCoords[channel];
+		float* pDst = (float*)pTexAttrib->buffer()->data();
 		for (uint32_t i = 0; i < numVertices; ++i) {
-			pDst[i * numComponents + 1] = pSrc[i * 3 + 1];
+			pDst[i * numComponents] = pSrc[i * 3];
+		}
+		if (numComponents == 2) {
+			for (uint32_t i = 0; i < numVertices; ++i) {
+				pDst[i * numComponents + 1] = 1.0f - pSrc[i * 3 + 1];
+			}
 		}
 	}
 
-	texCoordsAttribute.Init(GeometryAttribute::TEX_COORD,
-		pBuffer, numComponents, draco::DT_FLOAT32, false, componentSize, 0);
-	return pDracoMesh->AddAttribute(texCoordsAttribute, false, numVertices);
+	return index;
 }
 
 void GLTFExporter::_dracoCleanup()

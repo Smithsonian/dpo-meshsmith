@@ -1,7 +1,7 @@
 /**
 * MeshSmith
 *
-* @author Ralph Wiedemeier <ralph@framefactory.io>
+* @author Ralph Wiedemeier <ralph@framefactory.ch>
 * @copyright (c) 2018 Frame Factory GmbH.
 */
 
@@ -30,6 +30,7 @@ namespace flow
 	class GLTFPrimitive;
 	class GLTFBuffer;
 	class GLTFMaterial;
+	class GLTFDracoExtension;
 }
 
 namespace meshsmith
@@ -56,6 +57,28 @@ namespace meshsmith
 			writeGLB(false) { }
 	};
 
+	struct GLTFDracoOptions
+	{
+		int positionQuantizationBits;
+		int texCoordsQuantizationBits;
+		int normalsQuantizationBits;
+		int genericQuantizationBits;
+		bool stripNormals;
+		bool stripTexCoords;
+		bool stripGeneric;
+		int compressionLevel;
+
+		GLTFDracoOptions() :
+			positionQuantizationBits(14),
+			texCoordsQuantizationBits(12),
+			normalsQuantizationBits(10),
+			genericQuantizationBits(8),
+			stripNormals(false),
+			stripTexCoords(false),
+			stripGeneric(false),
+			compressionLevel(7) { }
+	};
+
 	class GLTFExporter
 	{
 	protected:
@@ -79,31 +102,33 @@ namespace meshsmith
 		GLTFExporter();
 		virtual ~GLTFExporter();
 
-		flow::Result exportScene(const aiScene* pScene, const std::string& fileName);
-		
-
+		/// Sets the export options to be used for subsequent calls to exportScene().
 		void setOptions(const GLTFExporterOptions& options);
 
-	protected:
-		flow::ResultT<flow::GLTFMesh*> exportMesh(
-			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset,
-			flow::GLTFBuffer* pBuffer, flow::GLTFMaterial* pDefaultMaterial);
+		/// Exports the given Assimp scene to the file with the given name, using
+		/// the previously set export options.
+		flow::Result exportScene(const aiScene* pScene, const std::string& fileName);
 
+	protected:
+		flow::ResultT<flow::GLTFMesh*> _exportMesh(
+			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
+
+		template<typename T>
+		flow::Result _exportFaces(const aiMesh* pAiMesh, flow::GLTFAsset& asset,
+			flow::GLTFPrimitive& primitive, flow::GLTFBuffer* pBuffer);
+		
 		void _exportTexCoords(
 			const aiMesh* pAiMesh, flow::GLTFAsset& asset,
 			flow::GLTFPrimitive& primitive, flow::GLTFBuffer* pBuffer, int channel);
-
 		flow::GLTFMaterial* _exportMaterial(
-			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset,
-			flow::GLTFBuffer* pBuffer, flow::GLTFMaterial* pDefaultMaterial);
+			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
 
 		flow::GLTFMaterial* _createDefaultMaterial(flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
 
-		flow::Result _dracoCompressMesh(const aiMesh* pMesh, draco::EncoderBuffer* pBuffer);
-		flow::Result _dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, _AttribIndices* pAttribIndices);
+		flow::Result _dracoCompressMesh(const aiMesh* pMesh, flow::GLTFDracoExtension* pDracoExtension, flow::GLTFBuffer* pBuffer);
+		flow::Result _dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, flow::GLTFDracoExtension* pDracoExtension);
 		flow::Result _dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh);
 		int _dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMesh, uint32_t channel);
-		draco::DataBuffer* _dracoCreateBuffer(const void* pData, size_t byteLength);
 		void _dracoCleanup();
 
 		GLTFExporterOptions _options;
