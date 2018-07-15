@@ -6,6 +6,7 @@
 */
 
 #include "Options.h"
+#include <iostream>
 
 using namespace meshsmith;
 using namespace flow;
@@ -23,38 +24,38 @@ Options::Options() :
 	useCompression(false),
 	objectSpaceNormals(false),
 	embedMaps(false),
+	compressionLevel(7),
 	positionQuantizationBits(14),
 	texCoordsQuantizationBits(12),
 	normalsQuantizationBits(10),
-	genericQuantizationBits(8),
-	compressionLevel(7)
+	genericQuantizationBits(8)
 {
 }
 
-Result Options::fromJSON(const flow::json& jsonOptions)
+Result Options::fromJSON(const flow::json& opts)
 {
 	try {
-		input = jsonOptions.count("input") ? jsonOptions.at("input").get<string>() : string{};
-		output = jsonOptions.count("output") ? jsonOptions.at("output").get<string>() : string{};
-		format = jsonOptions.count("format") ? jsonOptions.at("format").get<string>() : string{};
-		verbose = jsonOptions.count("verbose") ? jsonOptions.at("verbose").get<bool>() : false;
-		report = jsonOptions.count("report") ? jsonOptions.at("report").get<bool>() : false;
-		list = jsonOptions.count("list") ? jsonOptions.at("list").get<bool>() : false;
-		joinVertices = jsonOptions.count("joinVertices") ? jsonOptions.at("joinVertices").get<bool>() : false;
-		stripNormals = jsonOptions.count("stripNormals") ? jsonOptions.at("stripNormals").get<bool>() : false;
-		stripTexCoords = jsonOptions.count("stripTexCoords") ? jsonOptions.at("stripTexCoords").get<bool>() : false;
-		swizzle = jsonOptions.count("swizzle") ? jsonOptions.at("swizzle").get<string>() : string{};
-		scale = jsonOptions.count("scale") ? jsonOptions.at("scale").get<float>() : 1.0f;
+		input = opts.count("input") ? opts.at("input").get<string>() : string{};
+		output = opts.count("output") ? opts.at("output").get<string>() : string{};
+		format = opts.count("format") ? opts.at("format").get<string>() : string{};
+		verbose = opts.count("verbose") ? opts.at("verbose").get<bool>() : false;
+		report = opts.count("report") ? opts.at("report").get<bool>() : false;
+		list = opts.count("list") ? opts.at("list").get<bool>() : false;
+		joinVertices = opts.count("joinVertices") ? opts.at("joinVertices").get<bool>() : false;
+		stripNormals = opts.count("stripNormals") ? opts.at("stripNormals").get<bool>() : false;
+		stripTexCoords = opts.count("stripTexCoords") ? opts.at("stripTexCoords").get<bool>() : false;
+		swizzle = opts.count("swizzle") ? opts.at("swizzle").get<string>() : string{};
+		scale = opts.count("scale") ? opts.at("scale").get<float>() : 1.0f;
 
-		if (jsonOptions.count("translate")) {
-			auto t = jsonOptions.at("translate");
+		if (opts.count("translate")) {
+			auto t = opts.at("translate");
 			translate.x = t.at(0);
 			translate.y = t.at(1);
 			translate.z = t.at(2);
 		}
 
-		if (jsonOptions.count("gltfx")) {
-			auto gltfx = jsonOptions["gltfx"];
+		if (opts.count("gltfx")) {
+			auto gltfx = opts["gltfx"];
 			useCompression = gltfx.count("useCompression") ? gltfx.at("useCompression").get<bool>() : false;
 			diffuseMap = gltfx.count("diffuseMap") ? gltfx.at("diffuseMap").get<string>() : string{};
 			occlusionMap = gltfx.count("occlusionMap") ? gltfx.at("occlusionMap").get<string>() : string{};
@@ -63,13 +64,13 @@ Result Options::fromJSON(const flow::json& jsonOptions)
 			embedMaps = gltfx.count("embedMaps") ? gltfx.at("embedMaps").get<bool>() : false;
 		}
 
-		if (jsonOptions.count("compression")) {
-			auto compression = jsonOptions["compression"];
-			positionQuantizationBits = compression.count("positionQuantizationBits") ? compression.at("positionQuantizationBits").get<uint32_t>() : 14;
-			texCoordsQuantizationBits = compression.count("texCoordsQuantizationBits") ? compression.at("texCoordsQuantizationBits").get<uint32_t>() : 12;
-			normalsQuantizationBits = compression.count("normalsQuantizationBits") ? compression.at("normalsQuantizationBits").get<uint32_t>() : 10;
-			genericQuantizationBits = compression.count("genericQuantizationBits") ? compression.at("genericQuantizationBits").get<uint32_t>() : 8;
-			compressionLevel = compression.count("compressionLevel") ? compression.at("compressionLevel").get<bool>() : false;
+		if (opts.count("compression")) {
+			auto cmp = opts["compression"];
+			compressionLevel = cmp.count("compressionLevel") ? cmp.at("compressionLevel").get<uint32_t>() : 7;
+			positionQuantizationBits = cmp.count("positionQuantizationBits") ? cmp.at("positionQuantizationBits").get<uint32_t>() : 14;
+			texCoordsQuantizationBits = cmp.count("texCoordsQuantizationBits") ? cmp.at("texCoordsQuantizationBits").get<uint32_t>() : 12;
+			normalsQuantizationBits = cmp.count("normalsQuantizationBits") ? cmp.at("normalsQuantizationBits").get<uint32_t>() : 10;
+			genericQuantizationBits = cmp.count("genericQuantizationBits") ? cmp.at("genericQuantizationBits").get<uint32_t>() : 8;
 		}
 	}
 	catch (const std::exception& e) {

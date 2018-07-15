@@ -133,7 +133,6 @@ ResultT<GLTFMesh*> GLTFExporter::_exportMesh(
 		asset.addExtension(pDracoExtension, true);
 		primitive.addExtension(pDracoExtension);
 
-		draco::EncoderBuffer encoderBuffer;
 		Result result = _dracoCompressMesh(pAiMesh, pDracoExtension, pBuffer);
 		if (result.isError()) {
 			return result;
@@ -331,7 +330,22 @@ Result GLTFExporter::_dracoCompressMesh(
 	}
 	draco::EncoderBuffer encoderBuffer;
 	draco::Encoder encoder;
-	encoder.SetSpeedOptions(3, 3);
+	
+	int encodingSpeed = flow::max(0, 10 - _options.draco.compressionLevel);
+	encoder.SetSpeedOptions(encodingSpeed, encodingSpeed);
+	encoder.SetAttributeQuantization(GeometryAttribute::POSITION, _options.draco.positionQuantizationBits);
+	encoder.SetAttributeQuantization(GeometryAttribute::NORMAL, _options.draco.normalsQuantizationBits);
+	encoder.SetAttributeQuantization(GeometryAttribute::TEX_COORD, _options.draco.texCoordsQuantizationBits);
+	encoder.SetAttributeQuantization(GeometryAttribute::GENERIC, _options.draco.genericQuantizationBits);
+
+	if (_options.verbose) {
+		cout << "Compression Level: " << _options.draco.compressionLevel << endl;
+		cout << "Position Quantization Bits: " << _options.draco.positionQuantizationBits << endl;
+		cout << "Normals Quantization Bits: " << _options.draco.normalsQuantizationBits << endl;
+		cout << "TexCoords Quantization Bits: " << _options.draco.texCoordsQuantizationBits << endl;
+		cout << "Generic Quantization Bits: " << _options.draco.genericQuantizationBits << endl;
+	}
+
 	auto encodeStatus = encoder.EncodeMeshToBuffer(dracoMesh, &encoderBuffer);
 	if (!encodeStatus.ok()) {
 		return Result::error(string("Draco failed to encode mesh: ") + encodeStatus.error_msg());
@@ -372,6 +386,10 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	pDracoMesh->set_num_points(numPoints);
 	pDracoMesh->SetNumFaces(numFaces);
 
+	if (_options.verbose) {
+		cout << "Adding " << numVertices << " attribute values" << endl;
+	}
+
 	GeometryAttribute positionAttribute;
 	positionAttribute.Init(GeometryAttribute::POSITION, nullptr, 3, draco::DT_FLOAT32, false, v3fsize, 0);
 	int posIndex = pDracoMesh->AddAttribute(positionAttribute, false, numVertices);
@@ -379,6 +397,9 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	pPosAttrib->Reset(numVertices);
 	pPosAttrib->buffer()->Write(0, pMesh->mVertices, v3fsize * numVertices);
 	pDracoExtension->addAttribute(GLTFAttributeType::POSITION, posIndex);
+	if (_options.verbose) {
+		cout << "Position attribute added" << endl;
+	}
 
 	if (pMesh->HasNormals() && !_options.stripNormals) {
 		GeometryAttribute normalAttribute;
@@ -388,15 +409,24 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 		pNormAttrib->Reset(numVertices);
 		pNormAttrib->buffer()->Write(0, pMesh->mNormals, v3fsize * numVertices);
 		pDracoExtension->addAttribute(GLTFAttributeType::NORMAL, normIndex);
+		if (_options.verbose) {
+			cout << "Normal attribute added" << endl;
+		}
 	}
 
 	if (pMesh->HasTextureCoords(0) && !_options.stripTexCoords) {
 		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 0);
 		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_0, texIndex);
+		if (_options.verbose) {
+			cout << "TexCoord 0 attribute added" << endl;
+		}
 	}
 	if (pMesh->HasTextureCoords(1) && !_options.stripTexCoords) {
 		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 1);
 		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_1, texIndex);
+		if (_options.verbose) {
+			cout << "TexCoord 1 attribute added" << endl;
+		}
 	}
 
 	Result result = _dracoAddFaces(pMesh, pDracoMesh);
@@ -415,6 +445,10 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 Result GLTFExporter::_dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh)
 {
 	uint32_t numFaces = pMesh->mNumFaces;
+
+	if (_options.verbose) {
+		cout << "Adding " << numFaces << " faces" << endl;
+	}
 
 	for (uint32_t i = 0; i < numFaces; ++i) {
 		draco::Mesh::Face face;

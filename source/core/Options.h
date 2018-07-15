@@ -44,11 +44,11 @@ namespace meshsmith
 		bool objectSpaceNormals;
 		bool embedMaps;
 
+		uint32_t compressionLevel;
 		uint32_t positionQuantizationBits;
 		uint32_t texCoordsQuantizationBits;
 		uint32_t normalsQuantizationBits;
 		uint32_t genericQuantizationBits;
-		uint32_t compressionLevel;
 	};
 }
 

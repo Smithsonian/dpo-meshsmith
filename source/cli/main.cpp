@@ -76,13 +76,7 @@ int main(int argc, char** ppArgv)
 		if (parsed.count("config")) {
 			string configFilePath = parsed["config"].as<string>();
 			fstream inStream(configFilePath, fstream::in);
-			string jsonString;
-			inStream >> jsonString;
-
-			if (options.verbose) {
-				cout << "JSON configuration file: " << configFilePath << endl;
-				cout << jsonString << endl;
-			}
+			string jsonString((std::istreambuf_iterator<char>(inStream)), std::istreambuf_iterator<char>());
 
 			json jsonParsed;
 			try {
@@ -92,6 +86,11 @@ int main(int argc, char** ppArgv)
 				cout << Scene::getJsonStatus(string("failed to parse JSON configuration file: ") + configFilePath
 				+ ", reason: " + e.what()).dump(2);
 				exit(1);
+			}
+
+			if (options.verbose) {
+				cout << "JSON configuration file: " << configFilePath << endl;
+				cout << jsonParsed.dump(2) << endl;
 			}
 
 			options.fromJSON(jsonParsed);

@@ -51,13 +51,18 @@ json Scene::getJsonExportFormats()
 	return result;
 }
 
-json Scene::getJsonStatus(const std::string& error /* = std::string{} */)
+json Scene::getJsonStatus(const std::string& errorMessage /* = std::string{} */)
 {
+	bool isError = !errorMessage.empty();
+
 	json result = {
 		{ "type", "status" },
-		{ "status", error.empty() ? "ok" : "error" },
-		{ "error", error }
+		{ "status", isError ? "error" : "ok" }
 	};
+
+	if (isError) {
+		result["error"] = errorMessage;
+	}
 
 	return result;
 }

@@ -24,6 +24,6 @@
     "texCoordsQuantizationBits": 12,
     "normalsQuantizationBits": 10,
     "genericQuantizationBits": 8,
-    "compressionLevel": 7
+    "compressionLevel": 8
   }
 }
