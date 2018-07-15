@@ -8,6 +8,7 @@
 #ifndef _MESHSMITH_GLTFEXPORTER_H
 #define _MESHSMITH_GLTFEXPORTER_H
 
+#include "library.h"
 #include "core/ResultT.h"
 #include "core/json.h"
 
@@ -35,37 +36,12 @@ namespace flow
 
 namespace meshsmith
 {
-	struct GLTFExporterOptions
-	{
-		bool verbose;
-		bool embedMaps;
-		bool useCompression;
-		bool exportNormals;
-		bool exportTexCoords;
-		bool writeGLB;
-
-		std::string diffuseMapFile;
-		std::string occlusionMapFile;
-		std::string normalMapFile;
-
-		GLTFExporterOptions() :
-			verbose(false),
-			embedMaps(false),
-			useCompression(false),
-			exportNormals(true),
-			exportTexCoords(true),
-			writeGLB(false) { }
-	};
-
 	struct GLTFDracoOptions
 	{
 		int positionQuantizationBits;
 		int texCoordsQuantizationBits;
 		int normalsQuantizationBits;
 		int genericQuantizationBits;
-		bool stripNormals;
-		bool stripTexCoords;
-		bool stripGeneric;
 		int compressionLevel;
 
 		GLTFDracoOptions() :
@@ -73,31 +49,37 @@ namespace meshsmith
 			texCoordsQuantizationBits(12),
 			normalsQuantizationBits(10),
 			genericQuantizationBits(8),
-			stripNormals(false),
-			stripTexCoords(false),
-			stripGeneric(false),
-			compressionLevel(7) { }
+			compressionLevel(7)
+		{
+		}
 	};
 
-	class GLTFExporter
+	struct GLTFExporterOptions
 	{
-	protected:
-		struct _AttribIndices
-		{
-			int position;
-			int normal;
-			int tangent;
-			int texCoord0;
-			int texCoord1;
-			int color0;
-			int joints0;
-			int weights0;
+		bool verbose;
+		bool embedMaps;
+		bool useCompression;
+		bool stripNormals;
+		bool stripTexCoords;
+		bool writeBinary;
 
-			_AttribIndices() :
-				position(-1), normal(-1), tangent(-1), texCoord0(-1),
-				texCoord1(-1), color0(-1), joints0(-1), weights0(-1) { }
-		};
+		std::string diffuseMapFile;
+		std::string occlusionMapFile;
+		std::string normalMapFile;
 
+		GLTFDracoOptions draco;
+
+		GLTFExporterOptions() :
+			verbose(false),
+			embedMaps(false),
+			useCompression(false),
+			stripNormals(false),
+			stripTexCoords(false),
+			writeBinary(false) { }
+	};
+
+	class MESHSMITH_CORE_EXPORT GLTFExporter
+	{
 	public:
 		GLTFExporter();
 		virtual ~GLTFExporter();
@@ -129,12 +111,8 @@ namespace meshsmith
 		flow::Result _dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, flow::GLTFDracoExtension* pDracoExtension);
 		flow::Result _dracoAddFaces(const aiMesh* pMesh, draco::Mesh* pDracoMesh);
 		int _dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMesh, uint32_t channel);
-		void _dracoCleanup();
 
 		GLTFExporterOptions _options;
-
-		typedef std::vector<draco::DataBuffer*> dracoBufferVec_t;
-		dracoBufferVec_t _dracoBuffers;
 	};
 }
 

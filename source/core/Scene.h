@@ -11,6 +11,8 @@
 #include "library.h"
 
 #include "GLTFExporter.h"
+#include "Options.h"
+
 #include "core/ResultT.h"
 
 #include <string>
@@ -27,7 +29,7 @@ namespace Assimp
 
 namespace meshsmith
 {
-	class INTERMESH_ENGINE_EXPORT Scene
+	class MESHSMITH_CORE_EXPORT Scene
 	{
 	public:
 		static flow::json getJsonExportFormats();
@@ -40,15 +42,11 @@ namespace meshsmith
 		Scene& operator=(const Scene& other) = delete;
 
 	public:
-		void setGLTFOptions(const GLTFExporterOptions& options);
-		void setVerbose(bool enabled);
+		void setOptions(const Options& options);
 
-		flow::Result load(const std::string& fileName, bool stripNormals, bool stripUVs);
-		flow::Result save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const;
-
-		void swizzle(const std::string& order);
-		void center();
-		void scale(float factor);
+		flow::Result load();
+		flow::Result process();
+		flow::Result save() const;
 
 		void dump() const;
 		bool isValid() const;
@@ -60,13 +58,9 @@ namespace meshsmith
 
 		Assimp::Importer* _pImporter;
 		Assimp::Exporter* _pExporter;
-
 		const aiScene* _pScene;
-		std::string _fileName;
 
-		GLTFExporterOptions _gltfExporterOptions;
-
-		bool _verbose;
+		Options _options;
 	};
 }
 

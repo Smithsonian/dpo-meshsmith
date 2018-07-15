@@ -18,7 +18,7 @@ struct aiMesh;
 
 namespace meshsmith
 {
-	class INTERMESH_ENGINE_EXPORT Processor
+	class MESHSMITH_CORE_EXPORT Processor
 	{
 	protected:
 		Processor() {};

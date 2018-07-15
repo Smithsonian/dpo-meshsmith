@@ -1,0 +1,29 @@
+{
+  "input": "input-mesh.obj",
+  "output": "output-mesh.obj",
+  "format": "glbx",
+  "verbose": false,
+  "report": false,
+  "list": false,
+  "joinVertices": false,
+  "stripNormals": false,
+  "stripTexCoords": false,
+  "swizzle": "X+Y+Z+",
+  "scale": 1.0,
+  "translate": [ 0.0, 0.0, 0.0 ],
+  "gltfx": {
+    "useCompression": true,
+    "diffuseMap": "diffuse.jpg",
+    "occlusionMap": "occlusion.jpg",
+    "normalMap": "normals.jpg",
+    "objectSpaceNormals":  true,
+    "embedMaps": false
+  },
+  "compression": {
+    "positionQuantizationBits": 14,
+    "texCoordsQuantizationBits": 12,
+    "normalsQuantizationBits": 10,
+    "genericQuantizationBits": 8,
+    "compressionLevel": 7
+  }
+}

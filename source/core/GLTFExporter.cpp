@@ -94,7 +94,7 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath
 	pScene->addNode(pNode);
 	asset.setMainScene(pScene);
 
-	if (_options.writeGLB) {
+	if (_options.writeBinary) {
 		string glbFilePath(baseFilePath + ".glb");
 		if (!asset.saveGLB(glbFilePath)) {
 			return Result::error("failed to write GLB file: " + glbFilePath);
@@ -144,20 +144,20 @@ ResultT<GLTFMesh*> GLTFExporter::_exportMesh(
 		pAccPosition->updateBounds((float*)(pAiMesh->mVertices));
 		primitive.addPositions(pAccPosition);
 
-		if (pAiMesh->HasNormals() && _options.exportNormals) {
+		if (pAiMesh->HasNormals() && !_options.stripNormals) {
 			auto pAccNormals = asset.createAccessor<float>(GLTFAccessorType::VEC3);
 			pAccNormals->setElementCount(numVertices);
 			primitive.addNormals(pAccNormals);
 		}
 
-		if (pAiMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+		if (pAiMesh->HasTextureCoords(0) && !_options.stripTexCoords) {
 			size_t numComponents = pAiMesh->mNumUVComponents[0];
 			GLTFAccessorType accType = numComponents == 0 ? GLTFAccessorType::SCALAR : GLTFAccessorType::VEC2;
 			auto pAccUVs = asset.createAccessor<float>(accType);
 			pAccUVs->setElementCount(numVertices);
 			primitive.addAttribute(GLTFAttributeType::TEXCOORD_0, pAccUVs);
 		}
-		if (pAiMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+		if (pAiMesh->HasTextureCoords(1) && !_options.stripTexCoords) {
 			size_t numComponents = pAiMesh->mNumUVComponents[1];
 			GLTFAccessorType accType = numComponents == 0 ? GLTFAccessorType::SCALAR : GLTFAccessorType::VEC2;
 			auto pAccUVs = asset.createAccessor<float>(accType);
@@ -177,16 +177,16 @@ ResultT<GLTFMesh*> GLTFExporter::_exportMesh(
 		pAccPosition->updateBounds();
 		primitive.addPositions(pAccPosition);
 
-		if (pAiMesh->HasNormals() && _options.exportNormals) {
+		if (pAiMesh->HasNormals() && !_options.stripNormals) {
 			auto pAccNormals = asset.createAccessor<float>(GLTFAccessorType::VEC3);
 			pAccNormals->addVertexData(pBuffer, (float*)(pAiMesh->mNormals), numVertices);
 			primitive.addNormals(pAccNormals);
 		}
 
-		if (pAiMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+		if (pAiMesh->HasTextureCoords(0) && !_options.stripTexCoords) {
 			_exportTexCoords(pAiMesh, asset, primitive, pBuffer, 0);
 		}
-		if (pAiMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+		if (pAiMesh->HasTextureCoords(1) && !_options.stripTexCoords) {
 			_exportTexCoords(pAiMesh, asset, primitive, pBuffer, 1);
 		}
 
@@ -334,7 +334,7 @@ Result GLTFExporter::_dracoCompressMesh(
 	encoder.SetSpeedOptions(3, 3);
 	auto encodeStatus = encoder.EncodeMeshToBuffer(dracoMesh, &encoderBuffer);
 	if (!encodeStatus.ok()) {
-		return Result::error(string("failed to encode mesh: ") + encodeStatus.error_msg());
+		return Result::error(string("Draco failed to encode mesh: ") + encodeStatus.error_msg());
 	}
 
 	if (_options.verbose) {
@@ -345,7 +345,7 @@ Result GLTFExporter::_dracoCompressMesh(
 	decoderBuffer.Init(encoderBuffer.data(), encoderBuffer.size());
 	auto decodeResult = decoder.DecodeMeshFromBuffer(&decoderBuffer);
 	if (!decodeResult.ok()) {
-		return Result::error("failed to decode mesh");
+		return Result::error("Draco failed to decode mesh");
 	}
 
 	auto& decodedMesh = decodeResult.value();
@@ -380,7 +380,7 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	pPosAttrib->buffer()->Write(0, pMesh->mVertices, v3fsize * numVertices);
 	pDracoExtension->addAttribute(GLTFAttributeType::POSITION, posIndex);
 
-	if (pMesh->HasNormals() && _options.exportNormals) {
+	if (pMesh->HasNormals() && !_options.stripNormals) {
 		GeometryAttribute normalAttribute;
 		normalAttribute.Init(GeometryAttribute::NORMAL, nullptr, 3, draco::DT_FLOAT32, false, v3fsize, 0);
 		int normIndex = pDracoMesh->AddAttribute(normalAttribute, false, numVertices);
@@ -390,11 +390,11 @@ Result GLTFExporter::_dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMes
 		pDracoExtension->addAttribute(GLTFAttributeType::NORMAL, normIndex);
 	}
 
-	if (pMesh->HasTextureCoords(0) && _options.exportTexCoords) {
+	if (pMesh->HasTextureCoords(0) && !_options.stripTexCoords) {
 		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 0);
 		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_0, texIndex);
 	}
-	if (pMesh->HasTextureCoords(1) && _options.exportTexCoords) {
+	if (pMesh->HasTextureCoords(1) && !_options.stripTexCoords) {
 		int texIndex = _dracoAddTexCoords(pMesh, pDracoMesh, 1);
 		pDracoExtension->addAttribute(GLTFAttributeType::TEXCOORD_1, texIndex);
 	}
@@ -474,10 +474,4 @@ int GLTFExporter::_dracoAddTexCoords(const aiMesh* pMesh, draco::Mesh* pDracoMes
 	}
 
 	return index;
-}
-
-void GLTFExporter::_dracoCleanup()
-{
-	F_SAFE_DELETE_PTR_RANGE(_dracoBuffers);
-	_dracoBuffers.clear();
 }

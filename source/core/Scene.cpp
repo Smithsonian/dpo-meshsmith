@@ -65,8 +65,7 @@ json Scene::getJsonStatus(const std::string& error /* = std::string{} */)
 Scene::Scene() :
 	_pImporter(new Assimp::Importer()),
 	_pExporter(new Assimp::Exporter()),
-	_pScene(nullptr),
-	_verbose(false)
+	_pScene(nullptr)
 {
 }
 
@@ -76,33 +75,28 @@ Scene::~Scene()
 	F_SAFE_DELETE(_pExporter);
 }
 
-void Scene::setGLTFOptions(const GLTFExporterOptions& options)
+void Scene::setOptions(const Options& options)
 {
-	_gltfExporterOptions = options;
+	_options = options;
 }
 
-void Scene::setVerbose(bool enabled)
-{
-	_verbose = enabled;
-}
-
-Result Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs)
+Result Scene::load()
 {
 	int removeFlags
 		= aiComponent_MATERIALS | aiComponent_TEXTURES | aiComponent_LIGHTS
 		| aiComponent_CAMERAS | aiComponent_ANIMATIONS | aiComponent_BONEWEIGHTS
 		| aiComponent_COLORS;
 
-	if (stripNormals) {
-		if (_verbose) {
+	if (_options.stripNormals) {
+		if (_options.verbose) {
 			cout << "Strip normals/tangents" << endl;
 		}
 		removeFlags |= aiComponent_NORMALS | aiComponent_TANGENTS_AND_BITANGENTS;
 	}
 
-	if (stripUVs) {
-		if (_verbose) {
-			cout << "Strip UVs" << endl;
+	if (_options.stripTexCoords) {
+		if (_options.verbose) {
+			cout << "Strip TexCoords" << endl;
 		}
 		removeFlags |= aiComponent_TEXCOORDS;
 	}
@@ -110,36 +104,49 @@ Result Scene::load(const std::string& fileName, bool stripNormals, bool stripUVs
 	_pImporter->SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices;
 
-	_pScene = _pImporter->ReadFile(fileName, processFlags);
+	_pScene = _pImporter->ReadFile(_options.input, processFlags);
 
 	if (!_pScene) {
 		std::string errorString = _pImporter->GetErrorString();
-		return Result::error("failed to read: " + fileName + ", reason: " + errorString);
+		return Result::error("failed to read input file: " + _options.input + ", reason: " + errorString);
 	}
 
-	_fileName = fileName;
 	return Result::ok();
 }
 
-Result Scene::save(const std::string& fileName, const std::string& formatId, bool joinVertices, bool stripNormals, bool stripUVs) const
+Result Scene::save() const
 {
-	size_t dotPos = fileName.find_last_of(".");
-	string baseFileName = fileName.substr(0, dotPos);
+	string outputFilePath = _options.output.empty() ? _options.input : _options.output;
+	size_t dotPos = outputFilePath.find_last_of(".");
+	string baseFilePath = outputFilePath.substr(0, dotPos);
 	string extension;
 
-	if (formatId == "gltfx" || formatId == "glbx") {
-		if (_verbose) {
-			cout << "Exporting using custom glTF exporter." << endl;
+	if (_options.format == "gltfx" || _options.format == "glbx") {
+		bool writeBinary = _options.format == "glbx";
+		if (_options.verbose) {
+			cout << "Exporting custom glTF, binary: " << writeBinary << endl;
 		}
 
-		GLTFExporterOptions options(_gltfExporterOptions);
-		options.verbose = _verbose;
-		options.writeGLB = (formatId == "glbx");
+		GLTFExporterOptions gltfOptions;
+		gltfOptions.verbose = _options.verbose;
+		gltfOptions.embedMaps = _options.embedMaps;
+		gltfOptions.useCompression = _options.useCompression;
+		gltfOptions.stripNormals = _options.stripNormals;
+		gltfOptions.stripTexCoords = _options.stripTexCoords;
+		gltfOptions.writeBinary = writeBinary;
+
+		GLTFDracoOptions dracoOptions;
+		dracoOptions.positionQuantizationBits = _options.positionQuantizationBits;
+		dracoOptions.texCoordsQuantizationBits = _options.texCoordsQuantizationBits;
+		dracoOptions.normalsQuantizationBits = _options.normalsQuantizationBits;
+		dracoOptions.genericQuantizationBits = _options.genericQuantizationBits;
+		dracoOptions.compressionLevel = _options.compressionLevel;
+		gltfOptions.draco = dracoOptions;
 
 		GLTFExporter exporter;
-		exporter.setOptions(options);
+		exporter.setOptions(gltfOptions);
 
-		Result result = exporter.exportScene(_pScene, fileName);
+		Result result = exporter.exportScene(_pScene, outputFilePath);
 		if (result.isError()) {
 			return result;
 		}
@@ -150,68 +157,70 @@ Result Scene::save(const std::string& fileName, const std::string& formatId, boo
 	size_t formatCount = aiGetExportFormatCount();
 	for (size_t i = 0; i < formatCount; ++i) {
 		const aiExportFormatDesc* pDesc = aiGetExportFormatDescription(i);
-		if (formatId == pDesc->id) {
+		if (_options.format == pDesc->id) {
 			extension = pDesc->fileExtension;
-			if (_verbose) {
+			if (_options.verbose) {
 				cout << "Export format: " << pDesc->description << endl;
 			}
 		}
 	}
 
 	if (extension.empty()) {
-		return Result::error("invalid output format id: " + formatId);
+		return Result::error("invalid output format id: " + _options.format);
 	}
 
-	string outputFileName = baseFileName + "." + extension;
+	outputFilePath = baseFilePath + "." + extension;
 
-	if (_verbose) {
-		cout << "Output file: " << outputFileName << endl;
+	if (_options.verbose) {
+		cout << "Writing to output file: " << outputFilePath << endl;
 	}
 
 	Assimp::Exporter exporter;
 	Assimp::ExportProperties exportProps;
 	int exportFlags = 0;
 	
-	if (joinVertices) {
-		if (_verbose) {
+	if (_options.joinVertices) {
+		if (_options.verbose) {
 			cout << "Join Identical Vertices" << endl;
 		}
 		exportFlags |= aiProcess_JoinIdenticalVertices;
 	}
 
-	aiReturn result = exporter.Export(_pScene, formatId,
-		outputFileName, exportFlags, &exportProps);
+	aiReturn result = exporter.Export(_pScene, _options.format,
+		outputFilePath, exportFlags, &exportProps);
 
 	if (result != aiReturn::aiReturn_SUCCESS) {
 		std::string errorString = exporter.GetErrorString();
-		return Result::error("failed to write: " + outputFileName + ", reason: " + errorString);
+		return Result::error("failed to write output file: " + outputFilePath + ", reason: " + errorString);
 	}
 
 	return Result::ok();
 }
 
-void Scene::swizzle(const std::string& order)
+Result Scene::process()
 {
-	if (_verbose) {
-		cout << "Swizzle " << order << endl;
+	if (!_options.swizzle.empty()) {
+		if (_options.verbose) {
+			cout << "Swizzle: " << _options.swizzle << endl;
+		}
+		Processor::swizzle(_pScene, _options.swizzle);
 	}
 
-	Processor::swizzle(_pScene, order);
-}
-
-void Scene::center()
-{
-	if (_verbose) {
-		Vector3f center = Processor::calculateBoundingBox(_pScene).center();
-		cout << "Center " << center << endl;
+	if (_options.scale != 1.0f) {
+		if (_options.verbose) {
+			cout << "Scale: " << _options.scale << endl;
+		}
+		Processor::scale(_pScene, _options.scale);
 	}
 
-	Processor::center(_pScene);
-}
+	if (!_options.translate.allZero()) {
+		if (_options.verbose) {
+			cout << "Translate: " << _options.translate << endl;
+		}
+		Processor::translate(_pScene, _options.translate);
+	}
 
-void Scene::scale(float factor)
-{
-	Processor::scale(_pScene, factor);
+	return Result::ok();
 }
 
 string Scene::getJsonReport() const
@@ -268,7 +277,7 @@ string Scene::getJsonReport() const
 
 void Scene::dump() const
 {
-	cout << "File: " << _fileName << endl;
+	cout << "File: " << _options.input << endl;
 	const aiScene* pScene = _pScene;
 	cout << "  Meshes:     " << pScene->mNumMeshes << endl;
 	cout << "  Materials:  " << pScene->mNumMaterials << endl;

@@ -15,7 +15,7 @@ namespace meshsmith
 {
 	struct _engineImpl_t;
 
-	class INTERMESH_ENGINE_EXPORT Engine
+	class MESHSMITH_CORE_EXPORT Engine
 	{
 	public:
 		Engine();
