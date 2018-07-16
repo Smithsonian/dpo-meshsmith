@@ -78,16 +78,19 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath
 
 	GLTFBuffer* pBuffer = asset.createBuffer();
 
-	auto result = _exportMesh(pAiScene, 0, asset, pBuffer);
-	if (result.isError()) {
-		return result;
+	auto meshResult = _exportMesh(pAiScene, 0, asset, pBuffer);
+	if (meshResult.isError()) {
+		return meshResult;
 	}
 
-	auto pMesh = result.value();
+	auto pMesh = meshResult.value();
 
-	auto pDefaultMaterial = _createDefaultMaterial(asset, pBuffer);
-	//GLTFMaterial* pMaterial = _exportMaterial(pAiScene, 0, asset, pBuffer);
-	pMesh->setMaterial(pDefaultMaterial);
+	auto materialResult = _createDefaultMaterial(asset, pBuffer);
+	//auto materialResult = _exportMaterial(pAiScene, 0, asset, pBuffer);
+	if (materialResult.isError()) {
+		return materialResult;
+	}
+	pMesh->setMaterial(materialResult.value());
 
 	GLTFScene* pScene = asset.createScene();
 	GLTFMeshNode* pNode = asset.createMeshNode(pMesh);
@@ -259,7 +262,7 @@ void GLTFExporter::_exportTexCoords(
 }
 
 
-GLTFMaterial* GLTFExporter::_exportMaterial(
+GLTFExporter::materialResult_t GLTFExporter::_exportMaterial(
 	const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, GLTFBuffer* pBuffer)
 {
 	const aiMesh* pAiMesh = pAiScene->mMeshes[meshIndex];
@@ -267,18 +270,28 @@ GLTFMaterial* GLTFExporter::_exportMaterial(
 
 	// TODO: Implement
 
-	return nullptr;
+	return Result::error("not implemented yet");
 }
 
-GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer* pBuffer)
+GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer* pBuffer)
 {
 	GLTFMaterial* pMaterial = asset.createMaterial("default");
 	GLTFPBRMetallicRoughness pbr;
 	GLTFTexture* pTexture = nullptr;
 
+	if (_options.verbose) {
+		cout << "embed maps: " << _options.embedMaps << endl;
+	}
+
 	if (!_options.diffuseMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "diffuse map file: " << _options.diffuseMapFile << endl;
+		}
 		if (_options.embedMaps) {
 			auto pTexDiffuseView = pBuffer->addImage(_options.diffuseMapFile);
+			if (!pTexDiffuseView) {
+				return Result::error(string("failed to read diffuse map: " + _options.diffuseMapFile));
+			}
 			pTexture = asset.createTexture(pTexDiffuseView, _mimeTypeFromExtension(_options.diffuseMapFile));
 		}
 		else {
@@ -287,8 +300,14 @@ GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer*
 		pbr.setBaseColorTexture(pTexture);
 	}
 	if (!_options.occlusionMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "occlusion map file: " << _options.occlusionMapFile << endl;
+		}
 		if (_options.embedMaps) {
 			auto pTexOcclusionView = pBuffer->addImage(_options.occlusionMapFile);
+			if (!pTexOcclusionView) {
+				return Result::error(string("failed to read occlusion map: " + _options.occlusionMapFile));
+			}
 			pTexture = asset.createTexture(pTexOcclusionView, _mimeTypeFromExtension(_options.occlusionMapFile));
 		}
 		else {
@@ -297,8 +316,14 @@ GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer*
 		pMaterial->setOcclusionTexture(pTexture);
 	}
 	if (!_options.normalMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "Normal map file: " << _options.normalMapFile << endl;
+		}
 		if (_options.embedMaps) {
 			auto pTexNormalView = pBuffer->addImage(_options.normalMapFile);
+			if (!pTexNormalView) {
+				return Result::error(string("failed to read normal map: " + _options.normalMapFile));
+			}
 			pTexture = asset.createTexture(pTexNormalView, _mimeTypeFromExtension(_options.normalMapFile));
 		}
 		else {
@@ -308,7 +333,7 @@ GLTFMaterial* GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer*
 	}
 
 	pMaterial->setPBRMetallicRoughness(pbr);
-	return pMaterial;
+	return ResultT<GLTFMaterial*>(pMaterial);
 }
 
 Result GLTFExporter::_dracoCompressMesh(

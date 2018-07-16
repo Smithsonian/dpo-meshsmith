@@ -92,6 +92,8 @@ namespace meshsmith
 		flow::Result exportScene(const aiScene* pScene, const std::string& fileName);
 
 	protected:
+		typedef flow::ResultT<flow::GLTFMaterial*> materialResult_t;
+
 		flow::ResultT<flow::GLTFMesh*> _exportMesh(
 			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
 
@@ -102,10 +104,11 @@ namespace meshsmith
 		void _exportTexCoords(
 			const aiMesh* pAiMesh, flow::GLTFAsset& asset,
 			flow::GLTFPrimitive& primitive, flow::GLTFBuffer* pBuffer, int channel);
-		flow::GLTFMaterial* _exportMaterial(
+
+		materialResult_t _exportMaterial(
 			const aiScene* pAiScene, size_t meshIndex, flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
 
-		flow::GLTFMaterial* _createDefaultMaterial(flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
+		materialResult_t _createDefaultMaterial(flow::GLTFAsset& asset, flow::GLTFBuffer* pBuffer);
 
 		flow::Result _dracoCompressMesh(const aiMesh* pMesh, flow::GLTFDracoExtension* pDracoExtension, flow::GLTFBuffer* pBuffer);
 		flow::Result _dracoBuildMesh(const aiMesh* pMesh, draco::Mesh* pDracoMesh, flow::GLTFDracoExtension* pDracoExtension);

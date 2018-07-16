@@ -134,6 +134,9 @@ Result Scene::save() const
 
 		GLTFExporterOptions gltfOptions;
 		gltfOptions.verbose = _options.verbose;
+		gltfOptions.diffuseMapFile = _options.diffuseMap;
+		gltfOptions.occlusionMapFile = _options.occlusionMap;
+		gltfOptions.normalMapFile = _options.normalMap;
 		gltfOptions.embedMaps = _options.embedMaps;
 		gltfOptions.useCompression = _options.useCompression;
 		gltfOptions.stripNormals = _options.stripNormals;
