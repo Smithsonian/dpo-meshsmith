@@ -97,7 +97,7 @@ int main(int argc, char** ppArgv)
 		}
 
 		if (options.list || parsed.count("list")) {
-			std::cout << Scene::getJsonExportFormats();
+			cout << Scene::getJsonExportFormats().dump(2) << endl;
 			exit(0);
 		}
 
@@ -121,12 +121,12 @@ int main(int argc, char** ppArgv)
 		options.normalMap = parsed.count("normalmap") ? parsed["normalmap"].as<string>() : options.normalMap;
 
 		if (options.input.empty()) {
-			std::cout << Scene::getJsonStatus("missing input file name").dump(2);
+			cout << Scene::getJsonStatus("missing input file name").dump(2);
 			exit(1);
 		}
 	}
 	catch (const cxxopts::OptionException& e) {
-		std::cout << Scene::getJsonStatus(std::string("error while parsing options: ") + e.what());
+		cout << Scene::getJsonStatus(std::string("error while parsing options: ") + e.what());
 		exit(1);
 	}
 
@@ -152,11 +152,11 @@ int main(int argc, char** ppArgv)
 
 	result = scene.save();
 	if (result.isError()) {
-		std::cout << Scene::getJsonStatus(result.message()).dump(2) << endl;
+		cout << Scene::getJsonStatus(result.message()).dump(2) << endl;
 		exit(1);
 	}
 
-	std::cout << Scene::getJsonStatus().dump(2);
+	cout << Scene::getJsonStatus().dump(2);
 	exit(0);
 
 }
