@@ -7,7 +7,7 @@ typings/
 
 bin/
 libs/
-#vendor/
+vendor/
 Debug/
 Release/
 
