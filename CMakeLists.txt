@@ -43,11 +43,11 @@ endif()
 # ------------------------------------------------------------------------------
 # 3RD PARTY LIBRARIES
 
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_DEBUG_RUNTIME ON)
-find_package(Boost REQUIRED filesystem)
-message(STATUS "Boost include directories: " ${Boost_INCLUDE_DIRS})
-message(STATUS "Boost library directories: " ${Boost_LIBRARY_DIRS})
+#set(Boost_USE_STATIC_LIBS ON)
+#set(Boost_USE_DEBUG_RUNTIME ON)
+#find_package(Boost REQUIRED filesystem)
+#message(STATUS "Boost include directories: " ${Boost_INCLUDE_DIRS})
+#message(STATUS "Boost library directories: " ${Boost_LIBRARY_DIRS})
 
 # ------------------------------------------------------------------------------
 # COMPONENTS

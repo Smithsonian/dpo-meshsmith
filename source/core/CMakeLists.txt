@@ -18,10 +18,10 @@ source_group("All Files" FILES ${AllFiles})
 
 set(Assimp_DIR "${PROJECT_SOURCE_DIR}/vendor/assimp")
 set(Assimp_INCLUDE_DIR "${Assimp_DIR}/include")
-set(Assimp_DEBUG_LIB "${Assimp_DIR}/lib/debug/assimp-vc140-mt.lib")
-set(Assimp_RELEASE_LIB "${Assimp_DIR}/lib/release/assimp-vc140-mt.lib")
-set(Assimp_DEBUG_DLL "${Assimp_DIR}/lib/debug/assimp-vc140-mt.dll")
-set(Assimp_RELEASE_DLL "${Assimp_DIR}/lib/release/assimp-vc140-mt.dll")
+set(Assimp_DEBUG_LIB "${Assimp_DIR}/lib/Debug/assimp-vc140-mt.lib")
+set(Assimp_RELEASE_LIB "${Assimp_DIR}/lib/Release/assimp-vc140-mt.lib")
+set(Assimp_DEBUG_DLL "${Assimp_DIR}/lib/Debug/assimp-vc140-mt.dll")
+set(Assimp_RELEASE_DLL "${Assimp_DIR}/lib/Release/assimp-vc140-mt.dll")
 message("Assimp IncludeDir: " ${Assimp_INCLUDE_DIR})
 
 #set(FreeImage_INCLUDE_DIR "${FreeImage_DIR}")
@@ -73,10 +73,10 @@ target_link_libraries(MeshSmithCore
 
 install(
     FILES  ${Assimp_DEBUG_DLL}
-    DESTINATION ${CMAKE_SOURCE_DIR}/bin/debug
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/Debug
 )
 
 install(
     FILES  ${Assimp_RELEASE_DLL}
-    DESTINATION ${CMAKE_SOURCE_DIR}/bin/release
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/Release
 )
