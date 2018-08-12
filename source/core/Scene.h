@@ -51,7 +51,7 @@ namespace meshsmith
 		void dump() const;
 		bool isValid() const;
 
-		std::string getJsonReport() const;
+		flow::json getJsonReport() const;
 
 	private:
 		void _dumpMesh(const aiMesh* pMesh) const;

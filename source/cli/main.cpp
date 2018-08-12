@@ -63,6 +63,7 @@ int main(int argc, char** ppArgv)
 		("h,help", "Displays this message");
 
 	meshsmith::Options options;
+	int jsonIndent = -1;
 
 	try {
 		auto parsed = cliOptions.parse(argc, ppArgv);
@@ -73,6 +74,9 @@ int main(int argc, char** ppArgv)
 		}
 
 		options.verbose = (parsed.count("verbose") != 0);
+		if (options.verbose) {
+			jsonIndent = 4;
+		}
 
 		if (parsed.count("config")) {
 			string configFilePath = parsed["config"].as<string>();
@@ -85,20 +89,24 @@ int main(int argc, char** ppArgv)
 			}
 			catch (const std::exception& e) {
 				cout << Scene::getJsonStatus(string("failed to parse JSON configuration file: ") + configFilePath
-				+ ", reason: " + e.what()).dump(2);
+					+ ", reason: " + e.what()).dump(jsonIndent);
 				exit(1);
 			}
 
 			if (options.verbose) {
 				cout << "JSON configuration file: " << configFilePath << endl;
-				cout << jsonParsed.dump(2) << endl;
+				cout << jsonParsed.dump(jsonIndent) << endl;
 			}
 
 			options.fromJSON(jsonParsed);
 		}
 
+		if (options.verbose) {
+			jsonIndent = 4;
+		}
+
 		if (options.list || parsed.count("list")) {
-			cout << Scene::getJsonExportFormats().dump(2) << endl;
+			cout << Scene::getJsonExportFormats().dump(jsonIndent) << endl;
 			exit(0);
 		}
 
@@ -122,7 +130,7 @@ int main(int argc, char** ppArgv)
 		options.normalMap = parsed.count("normalmap") ? parsed["normalmap"].as<string>() : options.normalMap;
 
 		if (options.input.empty()) {
-			cout << Scene::getJsonStatus("missing input file name").dump(2);
+			cout << Scene::getJsonStatus("missing input file name").dump(jsonIndent);
 			exit(1);
 		}
 	}
@@ -136,16 +144,15 @@ int main(int argc, char** ppArgv)
 
 	Result result = scene.load();
 	if (result.isError()) {
-		cout << Scene::getJsonStatus(result.message()).dump(2) << endl;
+		cout << Scene::getJsonStatus(result.message()).dump(jsonIndent) << endl;
 		exit(1);
 	}
 
 	if (options.report) {
-		string report = scene.getJsonReport();
 
 		// if no output file name is given, write report to console
 		if (options.output.empty()) {
-			cout << scene.getJsonReport() << endl;
+			cout << scene.getJsonReport().dump(jsonIndent) << endl;
 		}
 		// otherwise write report to file
 		else {
@@ -155,7 +162,7 @@ int main(int argc, char** ppArgv)
 				exit(1);
 			}
 
-			outStream << report;
+			outStream << scene.getJsonReport().dump();
 			outStream.close();
 		}
 
@@ -164,17 +171,17 @@ int main(int argc, char** ppArgv)
 
 	result = scene.process();
 	if (result.isError()) {
-		cout << Scene::getJsonStatus(result.message()).dump(2) << endl;
+		cout << Scene::getJsonStatus(result.message()).dump(jsonIndent) << endl;
 		exit(1);
 	}
 
 	result = scene.save();
 	if (result.isError()) {
-		cout << Scene::getJsonStatus(result.message()).dump(2) << endl;
+		cout << Scene::getJsonStatus(result.message()).dump(jsonIndent) << endl;
 		exit(1);
 	}
 
-	cout << Scene::getJsonStatus().dump(2);
+	cout << Scene::getJsonStatus().dump(jsonIndent);
 	exit(0);
 
 }

@@ -239,7 +239,7 @@ Result Scene::process()
 	return Result::ok();
 }
 
-string Scene::getJsonReport() const
+json Scene::getJsonReport() const
 {
 	const aiScene* pScene = _pScene;
 
@@ -248,6 +248,7 @@ string Scene::getJsonReport() const
 	std::replace(filePath.begin(), filePath.end(), '\\', '/');
 
 	json jsonReport = {
+		{ "type", "report" },
 		{ "filePath", filePath }
 	};
 
@@ -332,7 +333,7 @@ string Scene::getJsonReport() const
 		{ "geometry", jsonSceneGeometry }
 	};
 
-	return jsonReport.dump(4);
+	return jsonReport;
 }
 
 void Scene::dump() const
