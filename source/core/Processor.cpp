@@ -30,6 +30,27 @@ void Processor::center(const aiScene* pScene)
 	Processor::translate(pScene, -offset);
 }
 
+void Processor::transform(const aiScene* pScene, const Matrix4f& matrix)
+{
+	for (uint32_t i = 0; i < pScene->mNumMeshes; ++i) {
+		Processor::transform(pScene->mMeshes[i], matrix);
+	}
+}
+
+void Processor::transform(const aiMesh* pMesh, const Matrix4f& matrix)
+{
+	uint32_t count = pMesh->mNumVertices;
+
+	for (uint32_t i = 0; i < count; ++i) {
+		aiVector3D* p = &pMesh->mVertices[i];
+		Vector4f t = matrix * Vector4f(p->x, p->y, p->z, 1);
+		t.homogenize();
+		p->x += t.x;
+		p->y += t.y;
+		p->z += t.z;
+	}
+}
+
 void Processor::translate(const aiScene* pScene, const Vector3f& offset)
 {
 	for (uint32_t i = 0; i < pScene->mNumMeshes; ++i) {

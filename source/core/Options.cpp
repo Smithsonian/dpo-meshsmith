@@ -30,6 +30,7 @@ Options::Options() :
 	normalsQuantizationBits(10),
 	genericQuantizationBits(8)
 {
+	matrix.setIdentity();
 }
 
 Result Options::fromJSON(const flow::json& opts)
@@ -52,6 +53,15 @@ Result Options::fromJSON(const flow::json& opts)
 			translate.x = t.at(0);
 			translate.y = t.at(1);
 			translate.z = t.at(2);
+		}
+
+		if (opts.count("matrix")) {
+			auto t = opts.at("matrix");
+			for (size_t i = 0, col = 0; col < 4; ++col) {
+				for (size_t row = 0; row < 4; ++row, ++i) {
+					matrix[row][col] = t.at(i);
+				}
+			}
 		}
 
 		if (opts.count("gltfx")) {
@@ -118,6 +128,9 @@ json Options::toJSON() const
 	}
 	if (!translate.allZero()) {
 		result["translate"] = translate.toJSON();
+	}
+	if (!matrix.isIdentity()) {
+		result["matrix"] = matrix.toJSON(Matrix4f::ColumnMajor);
 	}
 
 	json gltfx;

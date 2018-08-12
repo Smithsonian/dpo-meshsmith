@@ -11,6 +11,7 @@
 #include "library.h"
 
 #include "math/Vector3T.h"
+#include "math/Matrix4T.h"
 #include "math/Range3T.h"
 
 struct aiScene;
@@ -28,6 +29,9 @@ namespace meshsmith
 
 		static void center(const aiScene* pScene);
 		
+		static void transform(const aiScene* pScene, const flow::Matrix4f& matrix);
+		static void transform(const aiMesh* pMesh, const flow::Matrix4f& matrix);
+
 		static void translate(const aiScene* pScene, const flow::Vector3f& offset);
 		static void translate(const aiMesh* pMesh, const flow::Vector3f& offset);
 

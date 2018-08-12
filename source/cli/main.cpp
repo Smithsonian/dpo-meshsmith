@@ -21,6 +21,7 @@
 using namespace meshsmith;
 using namespace flow;
 
+using std::ofstream;
 using std::fstream;
 using std::string;
 using std::cout;
@@ -126,7 +127,7 @@ int main(int argc, char** ppArgv)
 		}
 	}
 	catch (const cxxopts::OptionException& e) {
-		cout << Scene::getJsonStatus(std::string("error while parsing options: ") + e.what());
+		cout << Scene::getJsonStatus(string("error while parsing options: ") + e.what());
 		exit(1);
 	}
 
@@ -140,7 +141,24 @@ int main(int argc, char** ppArgv)
 	}
 
 	if (options.report) {
-		cout << scene.getJsonReport() << endl;
+		string report = scene.getJsonReport();
+
+		// if no output file name is given, write report to console
+		if (options.output.empty()) {
+			cout << scene.getJsonReport() << endl;
+		}
+		// otherwise write report to file
+		else {
+			ofstream outStream(options.output, ofstream::out);
+			if (!outStream.is_open()) {
+				cout << Scene::getJsonStatus(string("failed to write to: ") + options.output);
+				exit(1);
+			}
+
+			outStream << report;
+			outStream.close();
+		}
+
 		exit(0);
 	}
 

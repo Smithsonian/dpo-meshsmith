@@ -18,6 +18,7 @@
 #include <assimp/postprocess.h>
 
 #include <iostream>
+#include <algorithm>
 
 using namespace meshsmith;
 using namespace Assimp;
@@ -228,6 +229,13 @@ Result Scene::process()
 		Processor::translate(_pScene, _options.translate);
 	}
 
+	if (!_options.matrix.isIdentity()) {
+		if (_options.verbose) {
+			cout << "Transform: " << _options.matrix << endl;
+		}
+		Processor::transform(_pScene, _options.matrix);
+	}
+
 	return Result::ok();
 }
 
@@ -235,50 +243,94 @@ string Scene::getJsonReport() const
 {
 	const aiScene* pScene = _pScene;
 
+	// in input file path replace backslashes with forward slashes
+	string filePath = _options.input;
+	std::replace(filePath.begin(), filePath.end(), '\\', '/');
+
 	json jsonReport = {
-		{ "type", "report" },
-		{ "status", "ok" }
+		{ "filePath", filePath }
 	};
 
-	Range3f boundingBox = Processor::calculateBoundingBox(pScene);
-	Vector3f bbMin = boundingBox.lowerBound();
-	Vector3f bbMax = boundingBox.upperBound();
-	Vector3f size = boundingBox.size();
-	Vector3f center = boundingBox.center();
+	size_t sceneNumVertices = 0;
+	size_t sceneNumFaces = 0;
 
-	json scene = {
-		{ "numMeshes", pScene->mNumMeshes },
-		{ "numMaterials", pScene->mNumMaterials },
-		{ "numTextures", pScene->mNumTextures },
-		{ "numLights", pScene->mNumLights },
-		{ "numCameras", pScene->mNumCameras },
-		{ "numAnimations", pScene->mNumAnimations },
-		{ "boundingBox", {
-			"min", { bbMin.x, bbMin.y, bbMin.z },
-			"max", { bbMax.x, bbMax.y, bbMax.z }
-		} },
-		{ "size", { size.x, size.y, size.z } },
-		{ "center", { center.x, center.y, center.z } }
-	};
+	Range3f sceneBoundingBox;
+	sceneBoundingBox.invalidate();
 
 	json jsonMeshes = json::array();
 	size_t numMeshes = pScene->mNumMeshes;
 
 	for (size_t i = 0; i < numMeshes; ++i) {
 		const aiMesh* pMesh = pScene->mMeshes[i];
-		jsonMeshes.push_back({
+
+		json jsonMeshStatistics = {
 			{ "numVertices", pMesh->mNumVertices },
 			{ "numFaces", pMesh->mNumFaces },
 			{ "hasNormals", pMesh->HasNormals() },
 			{ "hasTangentsAndBitangents", pMesh->HasTangentsAndBitangents() },
 			{ "hasBones", pMesh->HasBones() },
-			{ "numUVChannels", pMesh->GetNumUVChannels() },
+			{ "hasTexCoords", pMesh->HasTextureCoords(0) },
+			{ "numTexCoordChannels", pMesh->GetNumUVChannels() },
+			{ "hasVertexColors", pMesh->HasVertexColors(0) },
 			{ "numColorChannels", pMesh->GetNumColorChannels() }
+		};
+
+		Range3f boundingBox = Processor::calculateBoundingBox(pMesh);
+		Vector3f bbMin = boundingBox.lowerBound();
+		Vector3f bbMax = boundingBox.upperBound();
+		Vector3f size = boundingBox.size();
+		Vector3f center = boundingBox.center();
+
+		sceneBoundingBox.uniteWith(boundingBox);
+		sceneNumVertices += pMesh->mNumVertices;
+		sceneNumFaces += pMesh->mNumFaces;
+
+		json jsonMeshGeometry = {
+			{ "boundingBox",{
+				"min",{ bbMin.x, bbMin.y, bbMin.z },
+				"max",{ bbMax.x, bbMax.y, bbMax.z }
+			} },
+			{ "size",{ size.x, size.y, size.z } },
+			{ "center",{ center.x, center.y, center.z } }
+		};
+
+		jsonMeshes.push_back({
+			{ "statistics", jsonMeshStatistics },
+			{ "geometry", jsonMeshGeometry }
 		});
 	}
 
-	scene["meshes"] = jsonMeshes;
-	jsonReport["report"]["scene"] = scene;
+	jsonReport["meshes"] = jsonMeshes;
+
+	json jsonSceneStatistics = {
+		{ "numVertices", sceneNumVertices },
+		{ "numFaces", sceneNumFaces },
+		{ "numMeshes", pScene->mNumMeshes },
+		{ "numMaterials", pScene->mNumMaterials },
+		{ "numTextures", pScene->mNumTextures },
+		{ "numLights", pScene->mNumLights },
+		{ "numCameras", pScene->mNumCameras },
+		{ "numAnimations", pScene->mNumAnimations }
+	};
+
+	Vector3f bbMin = sceneBoundingBox.lowerBound();
+	Vector3f bbMax = sceneBoundingBox.upperBound();
+	Vector3f size = sceneBoundingBox.size();
+	Vector3f center = sceneBoundingBox.center();
+
+	json jsonSceneGeometry = {
+		{ "boundingBox",{
+			"min",{ bbMin.x, bbMin.y, bbMin.z },
+			"max",{ bbMax.x, bbMax.y, bbMax.z }
+		} },
+		{ "size",{ size.x, size.y, size.z } },
+		{ "center",{ center.x, center.y, center.z } }
+	};
+
+	jsonReport["scene"] = {
+		{ "statistics", jsonSceneStatistics },
+		{ "geometry", jsonSceneGeometry }
+	};
 
 	return jsonReport.dump(4);
 }

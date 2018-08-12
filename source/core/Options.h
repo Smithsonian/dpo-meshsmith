@@ -10,6 +10,7 @@
 
 #include "library.h"
 #include "math/Vector3T.h"
+#include "math/Matrix4T.h"
 #include "core/ResultT.h"
 #include "core/json.h"
 
@@ -36,6 +37,7 @@ namespace meshsmith
 		std::string swizzle;
 		float scale;
 		flow::Vector3f translate;
+		flow::Matrix4f matrix;
 
 		bool useCompression;
 		std::string diffuseMap;

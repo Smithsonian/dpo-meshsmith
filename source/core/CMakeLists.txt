@@ -37,6 +37,12 @@ set(Draco_LIB_DEBUG "${Draco_DIR}/lib/Debug/draco.lib")
 set(Draco_LIB_RELEASE "${Draco_DIR}/lib/Release/draco.lib")
 message("Draco Directory: " ${Draco_DIR})
 
+# ISTI VCG Library
+set(VCG_DIR "${PROJECT_SOURCE_DIR}/../vcglib")
+set(VCG_INCLUDE_DIR "${VCG_DIR}")
+set(VCG_EIGEN_INCLUDE_DIR "${VCG_DIR}/eigenlib")
+message("VCG Directory: " ${VCG_DIR})
+
 # ------------------------------------------------------------------------------
 # BUILD TARGET
 
@@ -49,6 +55,8 @@ target_include_directories(MeshSmithCore BEFORE PRIVATE
 	${Boost_INCLUDE_DIRS}
     ${Assimp_INCLUDE_DIR}
 	${Draco_INCLUDE_DIR}
+	${VCG_INCLUDE_DIR}
+	${VCG_EIGEN_INCLUDE_DIR}
 #    ${FreeImage_INCLUDE_DIR}
 )
 
