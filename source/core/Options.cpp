@@ -21,6 +21,9 @@ Options::Options() :
 	stripTexCoords(false),
 	scale(1.0f),
 	translate(0.0f, 0.0f, 0.0f),
+	alignX(Align::None),
+	alignY(Align::None),
+	alignZ(Align::None),
 	useCompression(false),
 	objectSpaceNormals(false),
 	embedMaps(false),
@@ -62,6 +65,30 @@ Result Options::fromJSON(const flow::json& opts)
 					matrix[row][col] = t.at(i);
 				}
 			}
+		}
+
+		if (opts.count("alignX")) {
+			int align = opts.at("alignX").get<int>();
+			alignX = align < 0 ? Align::Start : (align > 0 ? Align::End : Align::Center);
+		}
+		else {
+			alignX = Align::None;
+		}
+
+		if (opts.count("alignY")) {
+			int align = opts.at("alignY").get<int>();
+			alignY = align < 0 ? Align::Start : (align > 0 ? Align::End : Align::Center);
+		}
+		else {
+			alignY = Align::None;
+		}
+
+		if (opts.count("alignZ")) {
+			int align = opts.at("alignZ").get<int>();
+			alignZ = align < 0 ? Align::Start : (align > 0 ? Align::End : Align::Center);
+		}
+		else {
+			alignZ = Align::None;
 		}
 
 		if (opts.count("gltfx")) {

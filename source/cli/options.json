@@ -11,6 +11,7 @@
   "swizzle": "X+Y+Z+",
   "scale": 1.0,
   "translate": [ 0.0, 0.0, 0.0 ],
+  "align": [ 0, 0, 0 ],
   "gltfx": {
     "useCompression": true,
     "diffuseMap": "diffuse.jpg",

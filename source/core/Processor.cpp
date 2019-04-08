@@ -21,15 +21,6 @@ void Processor::combine(const aiScene* pScene, const std::string& diffuseMap, co
 
 }
 
-
-void Processor::center(const aiScene* pScene)
-{
-	Range3f boundingBox = Processor::calculateBoundingBox(pScene);
-	Vector3f offset = boundingBox.center();
-
-	Processor::translate(pScene, -offset);
-}
-
 void Processor::transform(const aiScene* pScene, const Matrix4f& matrix)
 {
 	for (uint32_t i = 0; i < pScene->mNumMeshes; ++i) {
@@ -87,6 +78,68 @@ void Processor::scale(const aiMesh* pMesh, const float factor)
 		p->y *= factor;
 		p->z *= factor;
 	}
+}
+
+void Processor::align(const aiScene* pScene, Align alignX, Align alignY, Align alignZ)
+{
+	Range3f boundingBox = Processor::calculateBoundingBox(pScene);
+	Vector3f offset = Processor::getOffset(boundingBox, alignX, alignY, alignZ);
+
+	Processor::translate(pScene, offset);
+}
+
+void Processor::align(const aiMesh* pMesh, Align alignX, Align alignY, Align alignZ)
+{
+	Range3f boundingBox = Processor::calculateBoundingBox(pMesh);
+	Vector3f offset = Processor::getOffset(boundingBox, alignX, alignY, alignZ);
+
+	Processor::translate(pMesh, offset);
+}
+
+Vector3f Processor::getOffset(const Range3f& boundingBox, Align alignX, Align alignY, Align alignZ)
+{
+	Vector3f lowerBound = boundingBox.lowerBound();
+	Vector3f upperBound = boundingBox.upperBound();
+	Vector3f center = boundingBox.center();
+	Vector3f offset;
+
+	switch (alignX) {
+	case Align::Start:
+		offset.x = -lowerBound.x;
+		break;
+	case Align::Center:
+		offset.x = -center.x;
+		break;
+	case Align::End:
+		offset.x = -upperBound.x;
+		break;
+	}
+
+	switch (alignY) {
+	case Align::Start:
+		offset.y = -lowerBound.y;
+		break;
+	case Align::Center:
+		offset.y = -center.y;
+		break;
+	case Align::End:
+		offset.y = -upperBound.y;
+		break;
+	}
+
+	switch (alignZ) {
+	case Align::Start:
+		offset.z = -lowerBound.z;
+		break;
+	case Align::Center:
+		offset.z = -center.z;
+		break;
+	case Align::End:
+		offset.z = -upperBound.z;
+		break;
+	}
+
+	return offset;
 }
 
 void Processor::swizzle(const aiScene* pScene, const std::string& order)

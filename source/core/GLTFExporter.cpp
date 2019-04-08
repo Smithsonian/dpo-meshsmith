@@ -25,6 +25,12 @@
 
 #include <iostream>
 
+#include "path.h"
+#ifdef max
+#undef max
+#endif
+
+
 using namespace meshsmith;
 using namespace flow;
 
@@ -62,10 +68,13 @@ void GLTFExporter::setOptions(const GLTFExporterOptions& options)
 	_options = options;
 }
 
-Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath)
+Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePathName)
 {
-	size_t dotPos = filePath.find_last_of('.');
-	string baseFilePath = filePath.substr(0, dotPos);
+	path filePath(filePathName);
+
+	string fileName = filePath.filename();
+	string extension = filePath.extension();
+	string fileNameNoExt = fileName.substr(0, fileName.size() - extension.size() - 1);
 
 	uint32_t numMeshes = pAiScene->mNumMeshes;
 	if (numMeshes < 1) {
@@ -98,7 +107,8 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath
 	asset.setMainScene(pScene);
 
 	if (_options.writeBinary) {
-		string glbFilePath(baseFilePath + ".glb");
+		string glbFileName = fileNameNoExt + ".glb";
+		string glbFilePath = path(filePath.parent_path() / glbFileName).str();
 		if (!asset.saveGLB(glbFilePath)) {
 			return Result::error("failed to write GLB file: " + glbFilePath);
 		}
@@ -106,11 +116,12 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath
 		return Result::ok();
 	}
 
-	string binaryFilePath(baseFilePath + ".bin");
-	pBuffer->setUri(binaryFilePath);
+	string binaryFileName = fileNameNoExt + ".bin";
+	string binaryFilePath = path(filePath.parent_path() / binaryFileName).str();
+	pBuffer->setUri(binaryFileName);
 	pBuffer->save(binaryFilePath);
 
-	string gltfFilePath(baseFilePath + ".gltf");
+	string gltfFilePath = path(filePath.parent_path() / (fileNameNoExt + ".gltf")).str();
 	if (!asset.saveGLTF(gltfFilePath, 2)) {
 		return Result::error("failed to write glTF file: " + gltfFilePath);
 	}
@@ -295,7 +306,7 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 			pTexture = asset.createTexture(pTexDiffuseView, _mimeTypeFromExtension(_options.diffuseMapFile));
 		}
 		else {
-			pTexture = asset.createTexture(_options.diffuseMapFile);
+			pTexture = asset.createTexture(path(_options.diffuseMapFile).filename());
 		}
 		pbr.setBaseColorTexture(pTexture);
 	}
@@ -311,7 +322,7 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 			pTexture = asset.createTexture(pTexOcclusionView, _mimeTypeFromExtension(_options.occlusionMapFile));
 		}
 		else {
-			pTexture = asset.createTexture(_options.occlusionMapFile);
+			pTexture = asset.createTexture(path(_options.occlusionMapFile).filename());
 		}
 		pMaterial->setOcclusionTexture(pTexture);
 	}
@@ -327,7 +338,7 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 			pTexture = asset.createTexture(pTexNormalView, _mimeTypeFromExtension(_options.normalMapFile));
 		}
 		else {
-			pTexture = asset.createTexture(_options.normalMapFile);
+			pTexture = asset.createTexture(path(_options.normalMapFile).filename());
 		}
 		pMaterial->setNormalTexture(pTexture);
 	}

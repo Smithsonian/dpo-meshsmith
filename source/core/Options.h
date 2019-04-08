@@ -9,6 +9,8 @@
 #define _MESHSMITH_OPTIONS_H
 
 #include "library.h"
+#include "Processor.h"
+
 #include "math/Vector3T.h"
 #include "math/Matrix4T.h"
 #include "core/ResultT.h"
@@ -37,6 +39,10 @@ namespace meshsmith
 		std::string swizzle;
 		float scale;
 		flow::Vector3f translate;
+		Align alignX;
+		Align alignY;
+		Align alignZ;
+
 		flow::Matrix4f matrix;
 
 		bool useCompression;

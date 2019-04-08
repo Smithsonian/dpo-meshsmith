@@ -222,6 +222,10 @@ Result Scene::process()
 		Processor::scale(_pScene, _options.scale);
 	}
 
+	if (_options.alignX != Align::None || _options.alignY != Align::None || _options.alignZ != Align::None) {
+		Processor::align(_pScene, _options.alignX, _options.alignY, _options.alignZ);
+	}
+
 	if (!_options.translate.allZero()) {
 		if (_options.verbose) {
 			cout << "Translate: " << _options.translate << endl;

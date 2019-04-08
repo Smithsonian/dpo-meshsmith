@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9.0)
 # ------------------------------------------------------------------------------
 # PROJECT
 
-project(MeshSmith VERSION 0.6)
+project(MeshSmith VERSION 0.7)
 
 # ------------------------------------------------------------------------------
 # GLOBAL SETTINGS
