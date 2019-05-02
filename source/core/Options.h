@@ -45,13 +45,18 @@ namespace meshsmith
 
 		flow::Matrix4f matrix;
 
-		bool useCompression;
+		float metallicFactor;
+		float roughnessFactor;
 		std::string diffuseMap;
 		std::string occlusionMap;
+		std::string emissiveMap;
+		std::string metallicRoughnessMap;
+		std::string zoneMap;
 		std::string normalMap;
 		bool objectSpaceNormals;
 		bool embedMaps;
 
+		bool useCompression;
 		uint32_t compressionLevel;
 		uint32_t positionQuantizationBits;
 		uint32_t texCoordsQuantizationBits;

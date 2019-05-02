@@ -93,12 +93,17 @@ Result Options::fromJSON(const flow::json& opts)
 
 		if (opts.count("gltfx")) {
 			auto gltfx = opts["gltfx"];
-			useCompression = gltfx.count("useCompression") ? gltfx.at("useCompression").get<bool>() : false;
+			metallicFactor = gltfx.count("metallicFactor") ? gltfx.at("metallicFactor").get<float>() : 0.1f;
+			roughnessFactor = gltfx.count("roughnessFactor") ? gltfx.at("roughnessFactor").get<float>() : 0.8f;
 			diffuseMap = gltfx.count("diffuseMap") ? gltfx.at("diffuseMap").get<string>() : string{};
 			occlusionMap = gltfx.count("occlusionMap") ? gltfx.at("occlusionMap").get<string>() : string{};
+			emissiveMap = gltfx.count("emissiveMap") ? gltfx.at("emissiveMap").get<string>() : string{};
+			metallicRoughnessMap = gltfx.count("metallicRoughnessMap") ? gltfx.at("metallicRoughnessMap").get<string>() : string{};
+			zoneMap = gltfx.count("zoneMap") ? gltfx.at("zoneMap").get<string>() : string{};
 			normalMap = gltfx.count("normalMap") ? gltfx.at("normalMap").get<string>() : string{};
 			objectSpaceNormals = gltfx.count("objectSpaceNormals") ? gltfx.at("objectSpaceNormals").get<bool>() : false;
 			embedMaps = gltfx.count("embedMaps") ? gltfx.at("embedMaps").get<bool>() : false;
+			useCompression = gltfx.count("useCompression") ? gltfx.at("useCompression").get<bool>() : false;
 		}
 
 		if (opts.count("compression")) {

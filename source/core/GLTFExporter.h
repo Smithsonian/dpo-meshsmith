@@ -63,8 +63,14 @@ namespace meshsmith
 		bool stripTexCoords;
 		bool writeBinary;
 
+		float metallicFactor;
+		float roughnessFactor;
+
 		std::string diffuseMapFile;
 		std::string occlusionMapFile;
+		std::string emissiveMapFile;
+		std::string metallicRoughnessMapFile;
+		std::string zoneMapFile;
 		std::string normalMapFile;
 
 		GLTFDracoOptions draco;
@@ -75,7 +81,9 @@ namespace meshsmith
 			useCompression(false),
 			stripNormals(false),
 			stripTexCoords(false),
-			writeBinary(false) { }
+			writeBinary(false),
+			metallicFactor(0.1f),
+			roughnessFactor(0.8f) { }
 	};
 
 	class MESHSMITH_CORE_EXPORT GLTFExporter

@@ -287,8 +287,11 @@ GLTFExporter::materialResult_t GLTFExporter::_exportMaterial(
 GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& asset, GLTFBuffer* pBuffer)
 {
 	GLTFMaterial* pMaterial = asset.createMaterial("default");
-	GLTFPBRMetallicRoughness pbr;
 	GLTFTexture* pTexture = nullptr;
+
+	GLTFPBRMetallicRoughness pbr;
+	pbr.setMetallicFactor(_options.metallicFactor);
+	pbr.setRoughnessFactor(_options.roughnessFactor);
 
 	if (_options.verbose) {
 		cout << "embed maps: " << _options.embedMaps << endl;
@@ -325,6 +328,60 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 			pTexture = asset.createTexture(path(_options.occlusionMapFile).filename());
 		}
 		pMaterial->setOcclusionTexture(pTexture);
+	}
+	if (!_options.emissiveMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "emissive map file: " << _options.emissiveMapFile << endl;
+		}
+		if (_options.embedMaps) {
+			auto pTexEmissiveView = pBuffer->addImage(_options.emissiveMapFile);
+			if (!pTexEmissiveView) {
+				return Result::error(string("failed to read emissive map: " + _options.emissiveMapFile));
+			}
+			pTexture = asset.createTexture(pTexEmissiveView, _mimeTypeFromExtension(_options.emissiveMapFile));
+		}
+		else {
+			pTexture = asset.createTexture(path(_options.emissiveMapFile).filename());
+		}
+		pMaterial->setEmissiveTexture(pTexture);
+	}
+	if (!_options.metallicRoughnessMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "metallic-roughness map file: " << _options.metallicRoughnessMapFile << endl;
+		}
+		if (_options.embedMaps) {
+			auto pTexMetRoughView = pBuffer->addImage(_options.metallicRoughnessMapFile);
+			if (!pTexMetRoughView) {
+				return Result::error(string("failed to read metallic-roughness map: " + _options.metallicRoughnessMapFile));
+			}
+			pTexture = asset.createTexture(pTexMetRoughView, _mimeTypeFromExtension(_options.metallicRoughnessMapFile));
+		}
+		else {
+			pTexture = asset.createTexture(path(_options.metallicRoughnessMapFile).filename());
+		}
+		pbr.setMetallicRoughnessTexture(pTexture);
+	}
+	if (!_options.zoneMapFile.empty()) {
+		if (_options.verbose) {
+			cout << "zone map file: " << _options.zoneMapFile << endl;
+		}
+		if (_options.embedMaps) {
+			auto pTexZoneView = pBuffer->addImage(_options.zoneMapFile);
+			if (!pTexZoneView) {
+				return Result::error(string("failed to read zone map: " + _options.zoneMapFile));
+			}
+			pTexture = asset.createTexture(pTexZoneView, _mimeTypeFromExtension(_options.zoneMapFile));
+		}
+		else {
+			pTexture = asset.createTexture(path(_options.zoneMapFile).filename());
+		}
+
+		GLTFTextureInfo zoneTexture;
+		zoneTexture.set(pTexture);
+
+		json extras = json::object();
+		extras["zoneTexture"] = zoneTexture.toJSON();
+		pMaterial->setExtras(extras);
 	}
 	if (!_options.normalMapFile.empty()) {
 		if (_options.verbose) {

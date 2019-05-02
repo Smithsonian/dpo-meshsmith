@@ -135,8 +135,13 @@ Result Scene::save() const
 
 		GLTFExporterOptions gltfOptions;
 		gltfOptions.verbose = _options.verbose;
+		gltfOptions.metallicFactor = _options.metallicFactor;
+		gltfOptions.roughnessFactor = _options.roughnessFactor;
 		gltfOptions.diffuseMapFile = _options.diffuseMap;
 		gltfOptions.occlusionMapFile = _options.occlusionMap;
+		gltfOptions.emissiveMapFile = _options.emissiveMap;
+		gltfOptions.metallicRoughnessMapFile = _options.metallicRoughnessMap;
+		gltfOptions.zoneMapFile = _options.zoneMap;
 		gltfOptions.normalMapFile = _options.normalMap;
 		gltfOptions.embedMaps = _options.embedMaps;
 		gltfOptions.useCompression = _options.useCompression;
