@@ -108,7 +108,7 @@ Result Scene::load()
 	}
 
 	_pImporter->SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
-	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices;
+	int processFlags = aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices | aiProcess_Triangulate;
 
 	_pScene = _pImporter->ReadFile(_options.input, processFlags);
 

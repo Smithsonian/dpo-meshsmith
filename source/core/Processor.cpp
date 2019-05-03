@@ -101,7 +101,7 @@ Vector3f Processor::getOffset(const Range3f& boundingBox, Align alignX, Align al
 	Vector3f lowerBound = boundingBox.lowerBound();
 	Vector3f upperBound = boundingBox.upperBound();
 	Vector3f center = boundingBox.center();
-	Vector3f offset;
+	Vector3f offset(0.0f, 0.0f, 0.0f);
 
 	switch (alignX) {
 	case Align::Start:
