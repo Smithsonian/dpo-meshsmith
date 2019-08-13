@@ -1,0 +1,87 @@
+[
+    {
+        "description": "COLLADA - Digital Asset Exchange Schema",
+        "extension": "dae",
+        "id": "collada"
+    }, {
+        "description": "X Files",
+        "extension": "x",
+        "id": "x"
+    }, {
+        "description": "Step Files",
+        "extension": "stp",
+        "id": "stp"
+    }, {
+        "description": "Wavefront OBJ format (direct)",
+        "extension": "obj",
+        "id": "obj"
+    }, {
+        "description": "Wavefront OBJ format (direct) without material file",
+        "extension": "obj",
+        "id": "objnomtl"
+    }, {
+        "description": "Stereolithography",
+        "extension": "stl",
+        "id": "stl"
+    }, {
+        "description": "Stereolithography (binary)",
+        "extension": "stl",
+        "id": "stlb"
+    }, {
+        "description": "Stanford Polygon Library",
+        "extension": "ply",
+        "id": "ply"
+    }, {
+        "description": "Stanford Polygon Library (binary)",
+        "extension": "ply",
+        "id": "plyb"
+    }, {
+        "description": "Autodesk 3DS (legacy)",
+        "extension": "3ds",
+        "id": "3ds"
+    }, {
+        "description": "GL Transmission Format v. 2",
+        "extension": "gltf",
+        "id": "gltf2"
+    }, {
+        "description": "GL Transmission Format v. 2 (binary)",
+        "extension": "glb",
+        "id": "glb2"
+    }, {
+        "description": "GL Transmission Format",
+        "extension": "gltf",
+        "id": "gltf"
+    }, {
+        "description": "GL Transmission Format (binary)",
+        "extension": "glb",
+        "id": "glb"
+    }, {
+        "description": "Assimp Binary File",
+        "extension": "assbin",
+        "id": "assbin"
+    }, {
+        "description": "Assimp XML Document",
+        "extension": "assxml",
+        "id": "assxml"
+    }, {
+        "description": "Extensible 3D",
+        "extension": "x3d",
+        "id": "x3d"
+    }, {
+        "description": "Autodesk FBX (binary)",
+        "extension": "fbx",
+        "id": "fbx"
+    }, {
+        "description": "Autodesk FBX (ascii)",
+        "extension": "fbx",
+        "id": "fbxa"
+    }, {
+        "description": "The 3MF-File-Format",
+        "extension": "3mf",
+        "id": "3mf"
+    }, {
+        "description": "Assimp JSON Document",
+        "extension": "json",
+        "id": "assjson"
+    }
+]

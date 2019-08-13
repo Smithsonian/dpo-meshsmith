@@ -1,0 +1,44 @@
+{
+    "input": "input-mesh.obj",
+    "output": "output.glb",
+    "format": "glbx",
+
+    "verbose": false,
+    "report": false,
+    "list": false,
+    
+    "joinVertices": false,
+    "stripNormals": false,
+    "stripTexCoords": false,
+    
+    "swizzle": "X+Y+Z+",
+    "scale": 1.0,
+    "translate": [ 0.0, 0.0, 0.0 ],
+    "alignX": 0,
+    "alignY": -1,
+    "alignZ": 1,
+    "flipUV": false,
+    "matrix": [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ],
+    
+    "gltfx": {
+        "metallicFactor": 0.1,
+        "roughnessFactor": 0.8,
+        "diffuseMap": "diffuse.jpg",
+        "occlusionMap": "occlusion.jpg",
+        "emissiveMap": "emissive.jpg",
+        "metallicRoughnessMap": "metallic-roughness.jpg",
+        "normalMap": "normals.jpg",
+        "zoneMap": "zones.jpg",
+  
+        "objectSpaceNormals":  true,
+        "embedMaps": false,
+        "useCompression": true
+      },
+    "compression": {
+      "positionQuantizationBits": 14,
+      "texCoordsQuantizationBits": 12,
+      "normalsQuantizationBits": 10,
+      "genericQuantizationBits": 8,
+      "compressionLevel": 8
+    }
+  }
