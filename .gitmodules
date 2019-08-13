@@ -1,0 +1,9 @@
+[submodule "libs/draco"]
+	path = libs/draco
+	url = https://github.com/google/draco
+[submodule "libs/assimp"]
+	path = libs/assimp
+	url = https://github.com/framelab/assimp
+[submodule "libs/flow-libs"]
+	path = libs/flow-libs
+	url = https://github.com/framelab/flow-libs
