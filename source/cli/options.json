@@ -12,6 +12,7 @@
   "scale": 1.0,
   "translate": [ 0.0, 0.0, 0.0 ],
   "align": [ 0, 0, 0 ],
+  "flipUV": false,
   "gltfx": {
     "useCompression": true,
     "diffuseMap": "diffuse.jpg",

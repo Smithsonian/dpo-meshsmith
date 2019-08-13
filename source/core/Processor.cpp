@@ -186,6 +186,28 @@ void Processor::swizzle(const aiMesh* pMesh, const std::string& order)
 	}
 }
 
+void Processor::flipUVs(const aiScene* pScene, bool flipX, bool flipY)
+{
+	for (uint32_t i = 0; i < pScene->mNumMeshes; ++i) {
+		Processor::flipUVs(pScene->mMeshes[i], flipX, flipY);
+	}
+}
+
+void Processor::flipUVs(const aiMesh* pMesh, bool flipX, bool flipY)
+{
+	uint32_t channels = pMesh->GetNumUVChannels();
+	uint32_t count = pMesh->mNumVertices;
+
+	for (uint32_t c = 0; c < channels; ++c) {
+		aiVector3D* pCoords = pMesh->mTextureCoords[c];
+		for (uint32_t i = 0; i < count; ++i) {
+			aiVector3D& uv = pCoords[i];
+			uv[0] = flipX ? 1 - uv[0] : uv[0];
+			uv[1] = flipY ? 1 - uv[1] : uv[1];
+		}
+	}
+}
+
 Range3f Processor::calculateBoundingBox(const aiScene* pScene)
 {
 	Range3f boundingBox;

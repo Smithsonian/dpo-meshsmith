@@ -6,7 +6,6 @@ typings/
 .vs/
 
 bin/
-libs/
 vendor/
 Debug/
 Release/

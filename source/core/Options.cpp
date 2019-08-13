@@ -24,6 +24,7 @@ Options::Options() :
 	alignX(Align::None),
 	alignY(Align::None),
 	alignZ(Align::None),
+	flipUV(false),
 	useCompression(false),
 	objectSpaceNormals(false),
 	embedMaps(false),
@@ -50,6 +51,7 @@ Result Options::fromJSON(const flow::json& opts)
 		stripTexCoords = opts.count("stripTexCoords") ? opts.at("stripTexCoords").get<bool>() : false;
 		swizzle = opts.count("swizzle") ? opts.at("swizzle").get<string>() : string{};
 		scale = opts.count("scale") ? opts.at("scale").get<float>() : 1.0f;
+		flipUV = opts.count("flipUV") ? opts.at("flipUV").get<bool>() : false;
 
 		if (opts.count("translate")) {
 			auto t = opts.at("translate");

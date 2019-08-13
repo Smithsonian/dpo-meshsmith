@@ -245,6 +245,13 @@ Result Scene::process()
 		Processor::transform(_pScene, _options.matrix);
 	}
 
+	if (_options.flipUV) {
+		if (_options.verbose) {
+			cout << "FlipUVs - Flip V coordinate" << endl;
+		}
+		Processor::flipUVs(_pScene, false, true);
+	}
+
 	return Result::ok();
 }
 

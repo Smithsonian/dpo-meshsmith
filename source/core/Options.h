@@ -42,6 +42,7 @@ namespace meshsmith
 		Align alignX;
 		Align alignY;
 		Align alignZ;
+		bool flipUV;
 
 		flow::Matrix4f matrix;
 

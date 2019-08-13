@@ -37,7 +37,7 @@ int main(int argc, char** ppArgv)
 
 	cxxopts::Options cliOptions(
 		"MeshSmith.exe",
-		"MeshSmith Mesh Conversion Tool, CLI v0.6.3, 2019-05-03"
+		"MeshSmith Mesh Conversion Tool, CLI v0.6.5, 2019-08-12"
 	);
 
 	cliOptions.add_options()
@@ -57,6 +57,7 @@ int main(int argc, char** ppArgv)
 		("u,striptexcoords", "Strip texture coords", cxxopts::value<bool>())
 		("z,swizzle", "Swizzle coordinates", cxxopts::value<string>())
 		("s,scale", "Scale scene by given factor", cxxopts::value<float>())
+		("flipuv", "Flip UV y coordinate", cxxopts::value<bool>())
 		("r,report", "Print JSON-formatted report", cxxopts::value<bool>())
 		("l,list", "Print JSON-formatted list of export formats", cxxopts::value<bool>())
 		("v,verbose", "Print log messages to std out", cxxopts::value<bool>())
@@ -121,6 +122,7 @@ int main(int argc, char** ppArgv)
 		options.stripTexCoords = parsed.count("striptexcoords") || options.stripTexCoords;
 		options.swizzle = parsed.count("swizzle") ? parsed["swizzle"].as<string>() : options.swizzle;
 		options.scale = parsed.count("scale") ? parsed["scale"].as<float>() : options.scale;
+		options.flipUV = parsed.count("flipuv") ? parsed["flipuv"].as<bool>() : options.flipUV;
 
 		options.useCompression = parsed.count("compress") || options.useCompression;
 		options.objectSpaceNormals = parsed.count("objectspacenormals") || options.objectSpaceNormals;

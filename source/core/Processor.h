@@ -44,6 +44,9 @@ namespace meshsmith
 		static void swizzle(const aiScene* pScene, const std::string& order);
 		static void swizzle(const aiMesh* pMesh, const std::string& order);
 
+		static void flipUVs(const aiScene* pScene, bool flipX, bool flipY);
+		static void flipUVs(const aiMesh* pMesh, bool flipX, bool flipY);
+
 		static flow::Range3f calculateBoundingBox(const aiScene* pScene);
 		static flow::Range3f calculateBoundingBox(const aiMesh* pMesh);
 		
