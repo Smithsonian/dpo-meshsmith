@@ -28,17 +28,7 @@ set_property(TARGET MeshSmith PROPERTY FOLDER "_apps")
 target_include_directories(MeshSmith BEFORE PRIVATE
     ${PROJECT_SOURCE_DIR}/source
 )
-#Qt5::Core
 
 target_link_libraries(MeshSmith
     MeshSmithCore
 )
-#Qt5::Core
-
-# ------------------------------------------------------------------------------
-# INSTALL TARGET
-
-#install(
-#    FILES  ${Assimp_DLL} ${FreeImage_DLL}
-#    DESTINATION ${CMAKE_SOURCE_DIR}/bin
-#)

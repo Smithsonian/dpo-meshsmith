@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.9.0)
+cmake_minimum_required(VERSION 3.13.0)
 
 # ------------------------------------------------------------------------------
 # PROJECT
 
-project(MeshSmith VERSION 0.7)
+project(MeshSmith VERSION 0.7.0)
 
 # ------------------------------------------------------------------------------
 # GLOBAL SETTINGS
@@ -19,16 +19,16 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 # Output directories
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/lib/Debug)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/lib/Release)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/bin/Debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/bin/Release)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/lib/debug)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/lib/release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/bin/debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/bin/release)
 
 # Append "d" to all debug libraries
 set(CMAKE_DEBUG_POSTFIX "d")
 
-# Instruct CMake to run moc automatically when needed
-set(CMAKE_AUTOMOC ON)
+# Visual Studio: include INSTALL target in default builds
+set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD ON)
 
 # GUI_TYPE can be added to add_executable to indicate a GUI application
 # this prevents the console to be shown on windows
@@ -41,22 +41,11 @@ if(APPLE)
 endif()
 
 # ------------------------------------------------------------------------------
-# 3RD PARTY LIBRARIES
-
-#set(Boost_USE_STATIC_LIBS ON)
-#set(Boost_USE_DEBUG_RUNTIME ON)
-#find_package(Boost REQUIRED filesystem)
-#message(STATUS "Boost include directories: " ${Boost_INCLUDE_DIRS})
-#message(STATUS "Boost library directories: " ${Boost_LIBRARY_DIRS})
-
-# ------------------------------------------------------------------------------
 # COMPONENTS
 
-# Add base include path for all libraries
-#include_directories (${PROJECT_SOURCE_DIR}/source)
+add_subdirectory(libs/flow-libs libs/flow-libs/libs)
 
-add_subdirectory(../flow-libs ${PROJECT_SOURCE_DIR}/vendor/flow-lib)
-include_directories(../flow-libs/source)
+include_directories(libs/flow-libs/source)
 
 add_subdirectory(source/core)
 add_subdirectory(source/cli)

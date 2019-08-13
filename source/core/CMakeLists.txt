@@ -16,32 +16,21 @@ source_group("All Files" FILES ${AllFiles})
 # ------------------------------------------------------------------------------
 # 3RD PARTY LIBRARIES
 
-set(Assimp_DIR "${PROJECT_SOURCE_DIR}/vendor/assimp")
+# Assimp mesh importer/exporter library
+set(Assimp_DIR "${PROJECT_SOURCE_DIR}/libs/assimp/bin")
 set(Assimp_INCLUDE_DIR "${Assimp_DIR}/include")
-set(Assimp_DEBUG_LIB "${Assimp_DIR}/lib/Debug/assimp-vc142-mt.lib")
-set(Assimp_RELEASE_LIB "${Assimp_DIR}/lib/Release/assimp-vc142-mt.lib")
-set(Assimp_DEBUG_DLL "${Assimp_DIR}/lib/Debug/assimp-vc142-mt.dll")
-set(Assimp_RELEASE_DLL "${Assimp_DIR}/lib/Release/assimp-vc142-mt.dll")
-message("Assimp IncludeDir: " ${Assimp_INCLUDE_DIR})
-
-#set(FreeImage_INCLUDE_DIR "${FreeImage_DIR}")
-#set(FreeImage_LIB "${FreeImage_DIR}/FreeImage.lib")
-#set(FreeImage_DLL "${FreeImage_DIR}/FreeImage.dll")
-#message("FreeImage Library: " ${FreeImage_LIB})
-#message("FreeImage IncludeDir: " ${FreeImage_INCLUDE_DIR})
+set(Assimp_DEBUG_LIB "${Assimp_DIR}/lib/debug/assimp-vc142-mt.lib")
+set(Assimp_RELEASE_LIB "${Assimp_DIR}/lib/release/assimp-vc142-mt.lib")
+set(Assimp_DEBUG_DLL "${Assimp_DIR}/lib/debug/assimp-vc142-mt.dll")
+set(Assimp_RELEASE_DLL "${Assimp_DIR}/lib/release/assimp-vc142-mt.dll")
+message("Assimp Directory: " ${Assimp_DIR})
 
 # Google Draco Mesh Compression
-set(Draco_DIR "${PROJECT_SOURCE_DIR}/vendor/draco")
+set(Draco_DIR "${PROJECT_SOURCE_DIR}/libs/draco/bin")
 set(Draco_INCLUDE_DIR "${Draco_DIR}/include")
-set(Draco_LIB_DEBUG "${Draco_DIR}/lib/Debug/draco.lib")
-set(Draco_LIB_RELEASE "${Draco_DIR}/lib/Release/draco.lib")
+set(Draco_LIB_DEBUG "${Draco_DIR}/lib/debug/draco.lib")
+set(Draco_LIB_RELEASE "${Draco_DIR}/lib/release/draco.lib")
 message("Draco Directory: " ${Draco_DIR})
-
-# ISTI VCG Library
-set(VCG_DIR "${PROJECT_SOURCE_DIR}/../vcglib")
-set(VCG_INCLUDE_DIR "${VCG_DIR}")
-set(VCG_EIGEN_INCLUDE_DIR "${VCG_DIR}/eigenlib")
-message("VCG Directory: " ${VCG_DIR})
 
 # ------------------------------------------------------------------------------
 # BUILD TARGET
@@ -52,39 +41,27 @@ set_property(TARGET MeshSmithCore PROPERTY FOLDER "_libs")
 
 target_include_directories(MeshSmithCore BEFORE PRIVATE
     FlowGLTF
-	${Boost_INCLUDE_DIRS}
     ${Assimp_INCLUDE_DIR}
 	${Draco_INCLUDE_DIR}
-	${VCG_INCLUDE_DIR}
-	${VCG_EIGEN_INCLUDE_DIR}
-#    ${FreeImage_INCLUDE_DIR}
 )
 
 target_link_libraries(MeshSmithCore
 	FlowGLTF
     debug ${Assimp_DEBUG_LIB}
 	optimized ${Assimp_RELEASE_LIB}
-	${Boost_LIBRARIES}
-    optimized ${Draco_LIB_RELEASE}
 	debug ${Draco_LIB_DEBUG}
-#    ${FreeImage_LIB}
+    optimized ${Draco_LIB_RELEASE}
 )
 
 # ------------------------------------------------------------------------------
 # INSTALL TARGET
 
-# Copies the include headers into the top level include directory
-#install(
-#    FILES ${HeaderFiles}
-#    DESTINATION ${CMAKE_SOURCE_DIR}/include/IntermeshEngine
-#)
-
 install(
     FILES  ${Assimp_DEBUG_DLL}
-    DESTINATION ${CMAKE_SOURCE_DIR}/bin/Debug
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/debug
 )
 
 install(
     FILES  ${Assimp_RELEASE_DLL}
-    DESTINATION ${CMAKE_SOURCE_DIR}/bin/Release
+    DESTINATION ${CMAKE_SOURCE_DIR}/bin/release
 )
