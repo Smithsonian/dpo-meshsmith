@@ -315,8 +315,8 @@ json Scene::getJsonReport() const
 
 		json jsonMeshGeometry = {
 			{ "boundingBox",{
-				"min",{ bbMin.x, bbMin.y, bbMin.z },
-				"max",{ bbMax.x, bbMax.y, bbMax.z }
+				{ "min",{ bbMin.x, bbMin.y, bbMin.z } },
+				{ "max",{ bbMax.x, bbMax.y, bbMax.z } }
 			} },
 			{ "size",{ size.x, size.y, size.z } },
 			{ "center",{ center.x, center.y, center.z } }
@@ -348,8 +348,8 @@ json Scene::getJsonReport() const
 
 	json jsonSceneGeometry = {
 		{ "boundingBox",{
-			"min",{ bbMin.x, bbMin.y, bbMin.z },
-			"max",{ bbMax.x, bbMax.y, bbMax.z }
+			{ "min",{ bbMin.x, bbMin.y, bbMin.z } },
+			{ "max",{ bbMax.x, bbMax.y, bbMax.z } }
 		} },
 		{ "size",{ size.x, size.y, size.z } },
 		{ "center",{ center.x, center.y, center.z } }
