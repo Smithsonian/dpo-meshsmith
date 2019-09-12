@@ -155,6 +155,7 @@ Result Scene::save() const
 		gltfOptions.normalMapFile = _options.normalMap;
 		gltfOptions.embedMaps = _options.embedMaps;
 		gltfOptions.useCompression = _options.useCompression;
+		gltfOptions.objectSpaceNormals = _options.objectSpaceNormals;
 		gltfOptions.stripNormals = _options.stripNormals;
 		gltfOptions.stripTexCoords = _options.stripTexCoords;
 		gltfOptions.writeBinary = writeBinary;

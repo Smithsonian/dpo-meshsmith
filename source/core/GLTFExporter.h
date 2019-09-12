@@ -68,6 +68,7 @@ namespace meshsmith
 	{
 		bool verbose;
 		bool embedMaps;
+		bool objectSpaceNormals;
 		bool useCompression;
 		bool stripNormals;
 		bool stripTexCoords;
@@ -88,6 +89,7 @@ namespace meshsmith
 		GLTFExporterOptions() :
 			verbose(false),
 			embedMaps(false),
+			objectSpaceNormals(false),
 			useCompression(false),
 			stripNormals(false),
 			stripTexCoords(false),

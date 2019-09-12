@@ -47,7 +47,7 @@ int main(int argc, char** ppArgv)
 
 	cxxopts::Options cliOptions(
 		"MeshSmith.exe",
-		"MeshSmith Mesh Conversion Tool, CLI v0.7.0, 2019-08-13"
+		"MeshSmith Mesh Conversion Tool, CLI v0.7.1, 2019-09-12"
 	);
 
 	cliOptions.add_options()

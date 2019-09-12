@@ -109,7 +109,8 @@ Result GLTFExporter::exportScene(const aiScene* pAiScene, const string& filePath
 	if (materialResult.isError()) {
 		return materialResult;
 	}
-	pMesh->setMaterial(materialResult.value());
+	auto material = materialResult.value();
+	pMesh->setMaterial(material);
 
 	GLTFScene* pScene = asset.createScene();
 	GLTFMeshNode* pNode = asset.createMeshNode(pMesh);
@@ -298,6 +299,7 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 {
 	GLTFMaterial* pMaterial = asset.createMaterial("default");
 	GLTFTexture* pTexture = nullptr;
+	json extras = json::object();
 
 	GLTFPBRMetallicRoughness pbr;
 	pbr.setMetallicFactor(_options.metallicFactor);
@@ -389,9 +391,7 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 		GLTFTextureInfo zoneTexture;
 		zoneTexture.set(pTexture);
 
-		json extras = json::object();
 		extras["zoneTexture"] = zoneTexture.toJSON();
-		pMaterial->setExtras(extras);
 	}
 	if (!_options.normalMapFile.empty()) {
 		if (_options.verbose) {
@@ -408,9 +408,18 @@ GLTFExporter::materialResult_t GLTFExporter::_createDefaultMaterial(GLTFAsset& a
 			pTexture = asset.createTexture(path(_options.normalMapFile).filename());
 		}
 		pMaterial->setNormalTexture(pTexture);
+
+		if (_options.objectSpaceNormals) {
+			extras["objectSpaceNormals"] = true;
+		}
 	}
 
 	pMaterial->setPBRMetallicRoughness(pbr);
+
+	if (extras.size() > 0) {
+		pMaterial->setExtras(extras);
+	}
+
 	return ResultT<GLTFMaterial*>(pMaterial);
 }
 
