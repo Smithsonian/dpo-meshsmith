@@ -45,7 +45,7 @@ MeshSmith.exe [OPTION...]
 ### Sample JSON Configuration file
 Instead of specifying all parameters on the command line, a JSON configuration file can be specified via `--config` parameter.
 
-If both a command line option and a configuration file with the same option are present, the command line option takes precendence. Note that a few advanced options are only available via configuration file.
+If both a command line option and a configuration file with the same option are present, the command line option takes precedence. Note that a few advanced options are only available via configuration file.
 
 ```json
 {
