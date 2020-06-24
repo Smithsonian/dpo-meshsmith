@@ -161,6 +161,8 @@ prompt and enter the following:
 ```
 .\build-libs-win64.bat
 ```
+It assumes you have Visual Studio 2019 Community Edition, so if you have a different edition you need to change the first line.
+It has four calls to MSBuild.exe which is assumed to be accessible on your PATH.
 
 #### Building the  MeshSmith CLI Application
 
@@ -168,6 +170,8 @@ After building the libraries, the application build (debug and release versions)
 ```
 .\build-app-win64.bat
 ```
+It assumes you have Visual Studio 2019 Community Edition, so if you have a different edition you need to change the first line.
+It has two calls to MSBuild.exe which is assumed to be accessible on your PATH.
 
 ##### Build output
 
